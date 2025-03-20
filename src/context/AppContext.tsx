@@ -26,6 +26,7 @@ interface AppContextType {
   loading: boolean;
   error: string | null;
   addTask: (task: TaskData) => Promise<boolean>;
+  updateTask: (task: TaskData) => Promise<TaskData | null>;
   allocateTask: (taskId: string, leadBuilder: string, team: string[]) => Promise<boolean>;
   refreshTasks: () => Promise<void>;
   addRequestor: (requestor: { name: string; email: string }) => Promise<boolean>;
@@ -191,6 +192,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     loading,
     error,
     addTask,
+    updateTask: smartsheetApi.updateTask,
     allocateTask,
     refreshTasks,
     addRequestor,

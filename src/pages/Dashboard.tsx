@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -30,6 +29,7 @@ import {
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import GanttChart from '@/components/GanttChart';
+import TaskDetailsModal from '@/components/TaskDetailsModal';
 import { TaskData } from '@/services/smartsheetApi';
 
 const Dashboard: React.FC = () => {
@@ -44,6 +44,10 @@ const Dashboard: React.FC = () => {
   
   // Active card
   const [activeCard, setActiveCard] = useState<string | null>(null);
+  
+  // Modal state
+  const [selectedTask, setSelectedTask] = useState<TaskData | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   
   // Calculate metrics
   const metrics = {
@@ -106,6 +110,23 @@ const Dashboard: React.FC = () => {
   // Handle card click
   const handleCardClick = (cardType: string) => {
     setActiveCard(activeCard === cardType ? null : cardType);
+  };
+  
+  // Handle task card click for showing details modal
+  const handleTaskClick = (task: TaskData) => {
+    setSelectedTask(task);
+    setIsModalOpen(true);
+  };
+  
+  // Close modal and refresh tasks
+  const handleModalClose = () => {
+    setIsModalOpen(false);
+    setSelectedTask(null);
+  };
+  
+  // After task update, refresh the task list
+  const handleTaskUpdated = () => {
+    refreshTasks();
   };
   
   return (
@@ -253,7 +274,7 @@ const Dashboard: React.FC = () => {
         ) : (
           <div className="grid gap-4 grid-cols-1">
             {filteredTasks.map(task => (
-              <Card key={task.id} className="overflow-hidden">
+              <Card key={task.id} className="overflow-hidden hover:shadow-md transition-shadow cursor-pointer" onClick={() => handleTaskClick(task)}>
                 <CardHeader className="pb-2">
                   <div className="flex justify-between items-start">
                     <div>
@@ -304,20 +325,33 @@ const Dashboard: React.FC = () => {
                     </div>
                   </div>
                 </CardContent>
-                <CardFooter className="flex justify-end pt-0">
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => navigate(`/allocate-tasks?taskId=${task.id}`)}
-                  >
-                    {task.status === 'Pending Allocation' ? 'Allocate' : 'View Details'}
-                  </Button>
-                </CardFooter>
+                {task.status === 'Pending Allocation' && (
+                  <CardFooter className="flex justify-end pt-0">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(`/allocate-tasks?taskId=${task.id}`);
+                      }}
+                    >
+                      Allocate
+                    </Button>
+                  </CardFooter>
+                )}
               </Card>
             ))}
           </div>
         )}
       </div>
+      
+      {/* Task Details Modal */}
+      <TaskDetailsModal 
+        task={selectedTask}
+        isOpen={isModalOpen}
+        onClose={handleModalClose}
+        onTaskUpdated={handleTaskUpdated}
+      />
     </div>
   );
 };
