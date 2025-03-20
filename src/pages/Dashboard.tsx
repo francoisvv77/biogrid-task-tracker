@@ -24,7 +24,6 @@ import {
   Hourglass, 
   Clock, 
   AlertCircle, 
-  CheckCircle2, 
   BarChart4,
   Search,
   Filter
@@ -58,7 +57,6 @@ const Dashboard: React.FC = () => {
       nextWeek.setDate(today.getDate() + 7);
       return endDate >= today && endDate <= nextWeek;
     }).length,
-    completed: tasks.filter(task => task.status === 'Completed').length,
   };
   
   // Filtered tasks
@@ -86,7 +84,6 @@ const Dashboard: React.FC = () => {
       nextWeek.setDate(today.getDate() + 7);
       if (!(endDate >= today && endDate <= nextWeek)) return false;
     }
-    if (activeCard === 'completed' && task.status !== 'Completed') return false;
     
     // Search Term
     if (searchTerm) {
@@ -128,7 +125,7 @@ const Dashboard: React.FC = () => {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4"
+        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"
       >
         {/* Total Tasks */}
         <Card className={`cursor-pointer hover:shadow-md transition-shadow ${activeCard === 'total' ? 'ring-2 ring-primary' : ''}`}
@@ -179,19 +176,6 @@ const Dashboard: React.FC = () => {
           <CardContent>
             <div className="text-2xl font-bold">{metrics.dueThisWeek}</div>
             <p className="text-xs text-muted-foreground mt-1">Tasks due in the next 7 days</p>
-          </CardContent>
-        </Card>
-        
-        {/* Completed */}
-        <Card className={`cursor-pointer hover:shadow-md transition-shadow ${activeCard === 'completed' ? 'ring-2 ring-primary' : ''}`}
-          onClick={() => handleCardClick('completed')}>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Completed</CardTitle>
-            <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{metrics.completed}</div>
-            <p className="text-xs text-muted-foreground mt-1">Tasks that have been completed</p>
           </CardContent>
         </Card>
       </motion.div>
@@ -276,16 +260,26 @@ const Dashboard: React.FC = () => {
                       <CardTitle className="text-base">{task.projectName}</CardTitle>
                       <CardDescription>{task.sponsor} • {task.edcSystem}</CardDescription>
                     </div>
-                    <div className={`px-2 py-1 rounded-full text-xs font-medium
-                      ${task.status === 'Pending Allocation' ? 'bg-orange-100 text-orange-700' : ''}
-                      ${task.status === 'Assigned' ? 'bg-blue-100 text-blue-700' : ''}
-                      ${task.status === 'In Progress' ? 'bg-purple-100 text-purple-700' : ''}
-                      ${task.status === 'In Validation' ? 'bg-cyan-100 text-cyan-700' : ''}
-                      ${task.status === 'Completed' ? 'bg-green-100 text-green-700' : ''}
-                      ${task.status === 'On Hold' ? 'bg-gray-100 text-gray-700' : ''}
-                      ${task.status === 'Cancelled' ? 'bg-red-100 text-red-700' : ''}
-                    `}>
-                      {task.status}
+                    <div className="flex gap-2">
+                      <div className={`px-2 py-1 rounded-full text-xs font-medium
+                        ${task.priority === 'Low' ? 'bg-blue-100 text-blue-700' : ''}
+                        ${task.priority === 'Medium' ? 'bg-green-100 text-green-700' : ''}
+                        ${task.priority === 'High' ? 'bg-orange-100 text-orange-700' : ''}
+                        ${task.priority === 'Critical' ? 'bg-red-100 text-red-700' : ''}
+                      `}>
+                        {task.priority || 'Medium'}
+                      </div>
+                      <div className={`px-2 py-1 rounded-full text-xs font-medium
+                        ${task.status === 'Pending Allocation' ? 'bg-orange-100 text-orange-700' : ''}
+                        ${task.status === 'Assigned' ? 'bg-blue-100 text-blue-700' : ''}
+                        ${task.status === 'In Progress' ? 'bg-purple-100 text-purple-700' : ''}
+                        ${task.status === 'In Validation' ? 'bg-cyan-100 text-cyan-700' : ''}
+                        ${task.status === 'Completed' ? 'bg-green-100 text-green-700' : ''}
+                        ${task.status === 'On Hold' ? 'bg-gray-100 text-gray-700' : ''}
+                        ${task.status === 'Cancelled' ? 'bg-red-100 text-red-700' : ''}
+                      `}>
+                        {task.status}
+                      </div>
                     </div>
                   </div>
                 </CardHeader>

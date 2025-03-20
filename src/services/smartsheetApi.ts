@@ -22,7 +22,8 @@ export const COLUMNS = {
   TEAM: 7047872816304004,
   REQUESTOR: 7329347793014660,
   REQUESTOR_EMAIL: 1825748165644164,
-  REQUESTOR_ID: 292473375248260
+  REQUESTOR_ID: 292473375248260,
+  PRIORITY: 8297885466840964
 };
 
 // Interface for task data
@@ -37,6 +38,7 @@ export interface TaskData {
   startDate: string;
   endDate: string;
   scopedHours: number;
+  priority?: string;
   status?: string;
   allocated?: string;
   team?: string[];
@@ -64,6 +66,7 @@ const taskToRow = (task: TaskData) => {
       { columnId: COLUMNS.START_DATE, value: task.startDate },
       { columnId: COLUMNS.END_DATE, value: task.endDate },
       { columnId: COLUMNS.SCOPED_HOURS, value: task.scopedHours.toString() },
+      { columnId: COLUMNS.PRIORITY, value: task.priority || "Medium" },
       { columnId: COLUMNS.STATUS, value: task.status || "Pending Allocation" },
       { columnId: COLUMNS.ALLOCATED, value: task.allocated || "" },
       { columnId: COLUMNS.TEAM, value: task.team ? task.team.join(", ") : "" },
@@ -93,6 +96,7 @@ export const rowToTask = (row: any): TaskData => {
     startDate: getCellValue(COLUMNS.START_DATE),
     endDate: getCellValue(COLUMNS.END_DATE),
     scopedHours: parseInt(getCellValue(COLUMNS.SCOPED_HOURS)) || 0,
+    priority: getCellValue(COLUMNS.PRIORITY),
     status: getCellValue(COLUMNS.STATUS),
     allocated: getCellValue(COLUMNS.ALLOCATED),
     team: getCellValue(COLUMNS.TEAM) ? getCellValue(COLUMNS.TEAM).split(", ") : [],

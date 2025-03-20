@@ -31,6 +31,7 @@ const GanttChart: React.FC<GanttChartProps> = ({ tasks }) => {
       sponsor: task.sponsor,
       taskType: task.taskType,
       status: task.status,
+      priority: task.priority || 'Medium',
       startDate: task.startDate,
       endDate: task.endDate,
       duration: duration,
@@ -96,6 +97,7 @@ const GanttChart: React.FC<GanttChartProps> = ({ tasks }) => {
           <p className="font-semibold">{data.name}</p>
           <p>Sponsor: {data.sponsor}</p>
           <p>Type: {data.taskType}</p>
+          <p>Priority: {data.priority}</p>
           <p>Status: {data.status}</p>
           <p>Duration: {data.duration} days</p>
           <p>Lead: {data.leadBuilder}</p>

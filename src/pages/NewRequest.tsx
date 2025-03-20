@@ -49,6 +49,7 @@ const newRequestSchema = z.object({
   taskType: z.string().min(1, 'Task type is required'),
   sponsor: z.string().min(1, 'Sponsor is required'),
   projectName: z.string().min(1, 'Study name is required'),
+  priority: z.string().min(1, 'Priority is required'),
   edcSystem: z.string().min(1, 'EDC system is required'),
   integrations: z.string().optional(),
   description: z.string().min(10, 'Description must be at least 10 characters'),
@@ -76,6 +77,7 @@ const NewRequest: React.FC = () => {
     taskType: '',
     sponsor: '',
     projectName: '',
+    priority: 'Medium',
     edcSystem: '',
     integrations: '',
     description: '',
@@ -111,6 +113,7 @@ const NewRequest: React.FC = () => {
         taskType: data.taskType,
         sponsor: data.sponsor,
         projectName: data.projectName,
+        priority: data.priority,
         edcSystem: data.edcSystem,
         integrations: data.integrations || '',
         description: data.description,
@@ -231,6 +234,31 @@ const NewRequest: React.FC = () => {
                         <FormControl>
                           <Input placeholder="Enter study name" {...field} />
                         </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  {/* Priority */}
+                  <FormField
+                    control={form.control}
+                    name="priority"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Priority</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select priority" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="Low">Low</SelectItem>
+                            <SelectItem value="Medium">Medium</SelectItem>
+                            <SelectItem value="High">High</SelectItem>
+                            <SelectItem value="Critical">Critical</SelectItem>
+                          </SelectContent>
+                        </Select>
                         <FormMessage />
                       </FormItem>
                     )}
