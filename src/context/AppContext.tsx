@@ -1,9 +1,6 @@
 
-// This is a placeholder for updating the AppContext.tsx file
-// We need to add requestors state and management functions
-
-import React, { createContext, useContext, useState, ReactNode } from 'react';
-import { TaskData, addTaskToSmartsheet } from '@/services/smartsheetApi';
+import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
+import { TaskData, smartsheetApi } from '@/services/smartsheetApi';
 
 // Define the requestor type
 interface Requestor {
@@ -27,7 +24,11 @@ interface AppContextType {
   edcSystems: string[];
   taskStatuses: string[];
   requestors: Requestor[];
+  loading: boolean;
+  error: string | null;
   addTask: (task: TaskData) => Promise<boolean>;
+  allocateTask: (taskId: string, leadBuilder: string, team: string[]) => Promise<boolean>;
+  refreshTasks: () => Promise<void>;
   addRequestor: (requestor: { name: string; email: string }) => Promise<boolean>;
   removeRequestor: (id: string) => Promise<boolean>;
 }
@@ -44,6 +45,9 @@ const generateId = () => {
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   // Tasks state
   const [tasks, setTasks] = useState<TaskData[]>([]);
+  // Loading and error states
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
   
   // Team members state - prefilled with initial data
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([
@@ -83,20 +87,67 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   // Requestors state
   const [requestors, setRequestors] = useState<Requestor[]>([]);
+
+  // Fetch tasks on component mount
+  useEffect(() => {
+    refreshTasks();
+  }, []);
+  
+  // Function to refresh tasks from the API
+  const refreshTasks = async (): Promise<void> => {
+    setLoading(true);
+    setError(null);
+    try {
+      const fetchedTasks = await smartsheetApi.getTasks();
+      setTasks(fetchedTasks);
+    } catch (err) {
+      console.error('Error fetching tasks:', err);
+      setError('Failed to fetch tasks. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
   
   // Function to add a new task
   const addTask = async (task: TaskData): Promise<boolean> => {
+    setLoading(true);
+    setError(null);
     try {
-      // In a real app, this would call an API
-      // For now, we'll just add it to our local state
-      setTasks([...tasks, task]);
-      
-      // Also add to Smartsheet
-      const result = await addTaskToSmartsheet(task);
-      return result;
+      // Using smartsheetApi.addTask instead of addTaskToSmartsheet
+      const result = await smartsheetApi.addTask(task);
+      if (result) {
+        // Refresh tasks after successful addition
+        await refreshTasks();
+        return true;
+      }
+      return false;
     } catch (error) {
       console.error('Error adding task:', error);
+      setError('Failed to add task. Please try again.');
       return false;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Function to allocate a task
+  const allocateTask = async (taskId: string, leadBuilder: string, team: string[]): Promise<boolean> => {
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await smartsheetApi.allocateTask(taskId, leadBuilder, team);
+      if (result) {
+        // Refresh tasks after successful allocation
+        await refreshTasks();
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error('Error allocating task:', error);
+      setError('Failed to allocate task. Please try again.');
+      return false;
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -113,6 +164,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       return true;
     } catch (error) {
       console.error('Error adding requestor:', error);
+      setError('Failed to add requestor. Please try again.');
       return false;
     }
   };
@@ -124,6 +176,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       return true;
     } catch (error) {
       console.error('Error removing requestor:', error);
+      setError('Failed to remove requestor. Please try again.');
       return false;
     }
   };
@@ -134,7 +187,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     edcSystems,
     taskStatuses,
     requestors,
+    loading,
+    error,
     addTask,
+    allocateTask,
+    refreshTasks,
     addRequestor,
     removeRequestor,
   };

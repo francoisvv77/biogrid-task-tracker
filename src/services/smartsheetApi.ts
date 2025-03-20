@@ -1,4 +1,3 @@
-
 import { toast } from "sonner";
 
 const SMARTSHEET_API_KEY = "mcQHLLu8W9A0uUtAmgYaFsQE8yH1QWKUYNcoq";
@@ -228,3 +227,6 @@ export const smartsheetApi = {
     }
   }
 };
+
+// Alias for backward compatibility if needed
+export const addTaskToSmartsheet = smartsheetApi.addTask;
