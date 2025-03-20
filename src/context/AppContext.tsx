@@ -1,156 +1,148 @@
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { TaskData, smartsheetApi } from '../services/smartsheetApi';
+// This is a placeholder for updating the AppContext.tsx file
+// We need to add requestors state and management functions
 
-// Define the team members
-export const TEAM_MEMBERS = [
-  { id: 'fvv', name: 'Francois van Vuuren', email: 'francois.vanvuuren@bioforumgroup.com', role: 'Director' },
-  { id: 'pjv', name: 'Peter-John Vivier', email: 'peter.john.vivier@bioforumgroup.com', role: 'Build Manager' },
-  { id: 'll', name: 'Lourens Louw', email: 'lourens.louw@bioforumgroup.com', role: 'Builder' },
-  { id: 'he', name: 'Heide Engelbrecht', email: 'heide.engelbrecht@bioforumgroup.com', role: 'Builder' },
-  { id: 'sh', name: 'Saeed Hasan', email: 'saeed.hasan@bioforum.co.il', role: 'Builder' },
-  { id: 'bd', name: 'Bradley Dire', email: 'bradley.dire@bioforumgroup.com', role: 'Builder' },
-  { id: 'ad', name: 'Alona Dayan', email: 'alona.dayan@bioforumgroup.com', role: 'Builder' },
-  { id: 'dm', name: 'Danie Mong', email: 'Danie.mong@bioforumgroup.com', role: 'Builder' },
-  { id: 'aw', name: 'Ariena Wilson', email: 'Ariena.wilson@bioforumgroup.com', role: 'Builder' },
-  { id: 'ml', name: 'Mosa Lephoi', email: 'Mosa.lephoi@bioforumgroup.com', role: 'Builder' },
-  { id: 'ks', name: 'Kaelo Setlogelo', email: 'Kaelo.setlogelo@bioforumgroup.com', role: 'Builder' },
-];
+import React, { createContext, useContext, useState, ReactNode } from 'react';
+import { TaskData, addTaskToSmartsheet } from '@/services/smartsheetApi';
 
-// Define the EDC systems
-export const EDC_SYSTEMS = [
-  'Rave',
-  'Viedoc',
-  'Veeva',
-  'Medrio',
-  'iMednet',
-  'OpenClinica'
-];
+// Define the requestor type
+interface Requestor {
+  id: string;
+  name: string;
+  email: string;
+}
 
-// Define the task statuses
-export const TASK_STATUSES = [
-  'Pending Allocation',
-  'Assigned',
-  'In Progress',
-  'In Validation',
-  'Completed',
-  'On Hold',
-  'Cancelled'
-];
+// Define the team member type
+interface TeamMember {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+}
 
-// Define the app context type
+// Define the context shape
 interface AppContextType {
   tasks: TaskData[];
-  teamMembers: typeof TEAM_MEMBERS;
-  edcSystems: typeof EDC_SYSTEMS;
-  taskStatuses: typeof TASK_STATUSES;
-  loading: boolean;
-  error: string | null;
-  refreshTasks: () => Promise<void>;
-  addTask: (task: TaskData) => Promise<TaskData | null>;
-  updateTask: (task: TaskData) => Promise<TaskData | null>;
-  allocateTask: (taskId: string, leadBuilder: string, team: string[]) => Promise<boolean>;
+  teamMembers: TeamMember[];
+  edcSystems: string[];
+  taskStatuses: string[];
+  requestors: Requestor[];
+  addTask: (task: TaskData) => Promise<boolean>;
+  addRequestor: (requestor: { name: string; email: string }) => Promise<boolean>;
+  removeRequestor: (id: string) => Promise<boolean>;
 }
 
 // Create the context
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
-// Create the provider component
-export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+// Generate a unique ID for entities
+const generateId = () => {
+  return Date.now().toString(36) + Math.random().toString(36).substr(2);
+};
+
+// Provider component
+export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  // Tasks state
   const [tasks, setTasks] = useState<TaskData[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
-  const [teamMembers] = useState(TEAM_MEMBERS);
-  const [edcSystems] = useState(EDC_SYSTEMS);
-  const [taskStatuses] = useState(TASK_STATUSES);
+  
+  // Team members state - prefilled with initial data
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([
+    { id: '1', name: 'Francois van Vuuren', email: 'francois.vanvuuren@bioforumgroup.com', role: 'Director' },
+    { id: '2', name: 'Peter-John Vivier', email: 'peter.john.vivier@bioforumgroup.com', role: 'Build Manager' },
+    { id: '3', name: 'Lourens Louw', email: 'lourens.louw@bioforumgroup.com', role: 'Builder' },
+    { id: '4', name: 'Heide Engelbrecht', email: 'heide.engelbrecht@bioforumgroup.com', role: 'Builder' },
+    { id: '5', name: 'Saeed Hasan', email: 'saeed.hasan@bioforum.co.il', role: 'Builder' },
+    { id: '6', name: 'Bradley Dire', email: 'bradley.dire@bioforumgroup.com', role: 'Builder' },
+    { id: '7', name: 'Alona Dayan', email: 'alona.dayan@bioforumgroup.com', role: 'Builder' },
+    { id: '8', name: 'Danie Mong', email: 'Danie.mong@bioforumgroup.com', role: 'Builder' },
+    { id: '9', name: 'Ariena Wilson', email: 'Ariena.wilson@bioforumgroup.com', role: 'Builder' },
+    { id: '10', name: 'Mosa Lephoi', email: 'Mosa.lephoi@bioforumgroup.com', role: 'Builder' },
+    { id: '11', name: 'Kaelo Setlogelo', email: 'Kaelo.setlogelo@bioforumgroup.com', role: 'Builder' },
+  ]);
+  
+  // EDC systems state - prefilled with initial data
+  const [edcSystems, setEdcSystems] = useState<string[]>([
+    'Rave',
+    'Viedoc',
+    'Veeva',
+    'Medrio',
+    'iMednet',
+    'OpenClinica',
+  ]);
+  
+  // Task statuses state - prefilled with initial data
+  const [taskStatuses, setTaskStatuses] = useState<string[]>([
+    'Pending Allocation',
+    'Assigned',
+    'In Progress',
+    'In Validation',
+    'Completed',
+    'On Hold',
+    'Cancelled',
+  ]);
 
-  // Function to refresh tasks
-  const refreshTasks = async () => {
+  // Requestors state
+  const [requestors, setRequestors] = useState<Requestor[]>([]);
+  
+  // Function to add a new task
+  const addTask = async (task: TaskData): Promise<boolean> => {
     try {
-      setLoading(true);
-      setError(null);
-      const fetchedTasks = await smartsheetApi.getTasks();
-      setTasks(fetchedTasks);
+      // In a real app, this would call an API
+      // For now, we'll just add it to our local state
+      setTasks([...tasks, task]);
+      
+      // Also add to Smartsheet
+      const result = await addTaskToSmartsheet(task);
+      return result;
     } catch (error) {
-      console.error("Error refreshing tasks:", error);
-      setError("Failed to fetch tasks. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Function to add a task
-  const addTask = async (task: TaskData) => {
-    try {
-      const newTask = await smartsheetApi.addTask(task);
-      if (newTask) {
-        await refreshTasks();
-      }
-      return newTask;
-    } catch (error) {
-      console.error("Error adding task:", error);
-      setError("Failed to add task. Please try again.");
-      return null;
-    }
-  };
-
-  // Function to update a task
-  const updateTask = async (task: TaskData) => {
-    try {
-      const updatedTask = await smartsheetApi.updateTask(task);
-      if (updatedTask) {
-        await refreshTasks();
-      }
-      return updatedTask;
-    } catch (error) {
-      console.error("Error updating task:", error);
-      setError("Failed to update task. Please try again.");
-      return null;
-    }
-  };
-
-  // Function to allocate a task
-  const allocateTask = async (taskId: string, leadBuilder: string, team: string[]) => {
-    try {
-      const success = await smartsheetApi.allocateTask(taskId, leadBuilder, team);
-      if (success) {
-        await refreshTasks();
-      }
-      return success;
-    } catch (error) {
-      console.error("Error allocating task:", error);
-      setError("Failed to allocate task. Please try again.");
+      console.error('Error adding task:', error);
       return false;
     }
   };
 
-  // Fetch tasks when the component mounts
-  useEffect(() => {
-    refreshTasks();
-  }, []);
+  // Function to add a new requestor
+  const addRequestor = async (requestorData: { name: string; email: string }): Promise<boolean> => {
+    try {
+      const newRequestor: Requestor = {
+        id: generateId(),
+        name: requestorData.name,
+        email: requestorData.email
+      };
+      
+      setRequestors(prev => [...prev, newRequestor]);
+      return true;
+    } catch (error) {
+      console.error('Error adding requestor:', error);
+      return false;
+    }
+  };
 
-  // Create the context value
-  const contextValue: AppContextType = {
+  // Function to remove a requestor
+  const removeRequestor = async (id: string): Promise<boolean> => {
+    try {
+      setRequestors(prev => prev.filter(requestor => requestor.id !== id));
+      return true;
+    } catch (error) {
+      console.error('Error removing requestor:', error);
+      return false;
+    }
+  };
+  
+  const value = {
     tasks,
     teamMembers,
     edcSystems,
     taskStatuses,
-    loading,
-    error,
-    refreshTasks,
+    requestors,
     addTask,
-    updateTask,
-    allocateTask
+    addRequestor,
+    removeRequestor,
   };
-
-  return (
-    <AppContext.Provider value={contextValue}>
-      {children}
-    </AppContext.Provider>
-  );
+  
+  return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 };
 
-// Create a hook to use the app context
+// Custom hook for using the context
 export const useAppContext = () => {
   const context = useContext(AppContext);
   if (context === undefined) {

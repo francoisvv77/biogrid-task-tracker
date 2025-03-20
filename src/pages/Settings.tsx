@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useAppContext } from '@/context/AppContext';
@@ -25,11 +24,9 @@ import {
 } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, Pencil, Trash2, Users, Database, TagIcon, Plus } from 'lucide-react';
+import { PlusCircle, Pencil, Trash2, Users, Database, TagIcon, Plus, Mail } from 'lucide-react';
 import { toast } from 'sonner';
 
-// Mock function to simulate adding/editing/deleting settings
-// In a real app, these would connect to your backend
 const mockUpdateSettings = () => {
   return new Promise<void>((resolve) => {
     setTimeout(() => {
@@ -38,7 +35,6 @@ const mockUpdateSettings = () => {
   });
 };
 
-// Team Members Management Component
 const TeamMembersSettings: React.FC = () => {
   const { teamMembers } = useAppContext();
   const [newTeamMember, setNewTeamMember] = useState({ name: '', email: '', role: 'Builder' });
@@ -154,7 +150,6 @@ const TeamMembersSettings: React.FC = () => {
   );
 };
 
-// EDC Systems Management Component
 const EdcSystemsSettings: React.FC = () => {
   const { edcSystems } = useAppContext();
   const [newSystem, setNewSystem] = useState('');
@@ -243,7 +238,6 @@ const EdcSystemsSettings: React.FC = () => {
   );
 };
 
-// Task Statuses Management Component
 const TaskStatusesSettings: React.FC = () => {
   const { taskStatuses } = useAppContext();
   const [newStatus, setNewStatus] = useState('');
@@ -332,7 +326,122 @@ const TaskStatusesSettings: React.FC = () => {
   );
 };
 
-// Main Settings Page
+const RequestorsSettings: React.FC = () => {
+  const { requestors, addRequestor, removeRequestor } = useAppContext();
+  const [newRequestor, setNewRequestor] = useState({ name: '', email: '' });
+  const [isAdding, setIsAdding] = useState(false);
+  
+  const handleAddRequestor = async () => {
+    if (!newRequestor.name || !newRequestor.email) {
+      toast.error('Please enter both name and email');
+      return;
+    }
+    
+    try {
+      await addRequestor(newRequestor);
+      toast.success(`Added requestor: ${newRequestor.name}`);
+      setNewRequestor({ name: '', email: '' });
+      setIsAdding(false);
+    } catch (error) {
+      toast.error('Failed to add requestor');
+    }
+  };
+
+  const handleDeleteRequestor = async (id: string) => {
+    try {
+      await removeRequestor(id);
+      toast.success('Requestor removed successfully');
+    } catch (error) {
+      toast.error('Failed to remove requestor');
+    }
+  };
+  
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h3 className="text-lg font-medium">Requestors</h3>
+        <Button 
+          variant="outline" 
+          size="sm"
+          onClick={() => setIsAdding(!isAdding)}
+          className="flex items-center gap-1"
+        >
+          {isAdding ? 'Cancel' : <><Plus className="h-4 w-4" /> Add Requestor</>}
+        </Button>
+      </div>
+      
+      {isAdding && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-muted/20 p-4 rounded-md space-y-4"
+        >
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="text-sm font-medium">Name</label>
+              <Input
+                value={newRequestor.name}
+                onChange={(e) => setNewRequestor({ ...newRequestor, name: e.target.value })}
+                placeholder="Enter name"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Email</label>
+              <Input
+                value={newRequestor.email}
+                onChange={(e) => setNewRequestor({ ...newRequestor, email: e.target.value })}
+                placeholder="Enter email"
+                type="email"
+              />
+            </div>
+          </div>
+          <div className="flex justify-end">
+            <Button size="sm" onClick={handleAddRequestor}>
+              Add Requestor
+            </Button>
+          </div>
+        </motion.div>
+      )}
+      
+      <div className="border rounded-md">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Name</TableHead>
+              <TableHead>Email</TableHead>
+              <TableHead className="w-[100px]">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {requestors.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={3} className="text-center py-4 text-muted-foreground">
+                  No requestors added yet
+                </TableCell>
+              </TableRow>
+            ) : (
+              requestors.map((requestor) => (
+                <TableRow key={requestor.id}>
+                  <TableCell>{requestor.name}</TableCell>
+                  <TableCell>{requestor.email}</TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive"
+                        onClick={() => handleDeleteRequestor(requestor.id)}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </div>
+    </div>
+  );
+};
+
 const Settings: React.FC = () => {
   return (
     <div className="space-y-6">
@@ -344,7 +453,7 @@ const Settings: React.FC = () => {
       </div>
       
       <Tabs defaultValue="team-members" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="team-members" className="flex items-center gap-2">
             <Users className="h-4 w-4" />
             <span>Team Members</span>
@@ -356,6 +465,10 @@ const Settings: React.FC = () => {
           <TabsTrigger value="task-statuses" className="flex items-center gap-2">
             <TagIcon className="h-4 w-4" />
             <span>Task Statuses</span>
+          </TabsTrigger>
+          <TabsTrigger value="requestors" className="flex items-center gap-2">
+            <Mail className="h-4 w-4" />
+            <span>Requestors</span>
           </TabsTrigger>
         </TabsList>
         
@@ -372,6 +485,10 @@ const Settings: React.FC = () => {
             <TabsContent value="task-statuses" className="mt-0">
               <TaskStatusesSettings />
             </TabsContent>
+
+            <TabsContent value="requestors" className="mt-0">
+              <RequestorsSettings />
+            </TabsContent>
           </CardContent>
         </Card>
       </Tabs>
@@ -380,3 +497,4 @@ const Settings: React.FC = () => {
 };
 
 export default Settings;
+

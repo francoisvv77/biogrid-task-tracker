@@ -66,11 +66,11 @@ const newRequestSchema = z.object({
 type NewRequestFormValues = z.infer<typeof newRequestSchema>;
 
 const NewRequest: React.FC = () => {
-  const { addTask, edcSystems } = useAppContext();
+  const { addTask, edcSystems, requestors } = useAppContext();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const navigate = useNavigate();
   
-  // Default form values
+  // Default form values with current date for startDate and endDate
   const defaultValues: Partial<NewRequestFormValues> = {
     taskType: '',
     sponsor: '',
@@ -139,6 +139,12 @@ const NewRequest: React.FC = () => {
   
   // Watch start date to ensure end date is after start date
   const startDate = form.watch('startDate');
+
+  // Helper function for requestor selection
+  const handleRequestorSelect = (requestor: { name: string; email: string }) => {
+    form.setValue('requestorName', requestor.name);
+    form.setValue('requestorEmail', requestor.email);
+  };
   
   return (
     <div className="space-y-6">
@@ -295,7 +301,9 @@ const NewRequest: React.FC = () => {
                             <Calendar
                               mode="single"
                               selected={field.value}
-                              onSelect={field.onChange}
+                              onSelect={(date) => {
+                                if (date) field.onChange(date);
+                              }}
                               initialFocus
                               className="pointer-events-auto"
                             />
@@ -336,7 +344,9 @@ const NewRequest: React.FC = () => {
                             <Calendar
                               mode="single"
                               selected={field.value}
-                              onSelect={field.onChange}
+                              onSelect={(date) => {
+                                if (date) field.onChange(date);
+                              }}
                               disabled={(date) => date < startDate}
                               initialFocus
                               className="pointer-events-auto"
@@ -390,7 +400,30 @@ const NewRequest: React.FC = () => {
                 
                 {/* Requestor Information */}
                 <div className="bg-muted/30 p-4 rounded-lg">
-                  <h3 className="font-medium mb-4">Requestor Information</h3>
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="font-medium">Requestor Information</h3>
+                    {requestors.length > 0 && (
+                      <Select
+                        onValueChange={(value) => {
+                          const selectedRequestor = requestors.find(r => r.id === value);
+                          if (selectedRequestor) {
+                            handleRequestorSelect(selectedRequestor);
+                          }
+                        }}
+                      >
+                        <SelectTrigger className="w-[200px]">
+                          <SelectValue placeholder="Select a requestor" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {requestors.map(requestor => (
+                            <SelectItem key={requestor.id} value={requestor.id}>
+                              {requestor.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <FormField
                       control={form.control}
