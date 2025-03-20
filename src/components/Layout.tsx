@@ -71,8 +71,12 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
               transition={{ delay: 0.2 }}
               className="text-center"
             >
-              <h1 className="font-bold text-xl text-primary tracking-tight">Bioforum</h1>
-              <p className="text-xs text-gray-500 mt-1">Build Management Tracker</p>
+              <img 
+                src="/lovable-uploads/80c074f4-5cec-402a-be24-31718b565435.png" 
+                alt="Bioforum Logo" 
+                className="h-12 mx-auto mb-2"
+              />
+              <p className="text-sm text-gray-600 mt-1 font-medium">Build Management Tracker</p>
             </motion.div>
           </div>
           
