@@ -8,7 +8,7 @@ const API_URL = "/api/smartsheet";
 // Column IDs for all fields
 export const COLUMNS = {
   TASK_ID: 1542486025785220,
-  TASK_TYPE: 3794285839470468,
+  TASK_TYPE: 3794285839470468 ,
   SPONSOR: 292473375248260,
   PROJECT_NAME: 6046085653155716,
   EDC_SYSTEM: 979536072363908,
@@ -45,6 +45,7 @@ export interface TaskData {
   requestor?: string;
   requestorEmail?: string;
   requestorId?: string;
+  rowId?: number; // Smartsheet row ID needed for updates
 }
 
 // Function to generate a unique ID
@@ -53,8 +54,9 @@ export const generateUniqueId = (): string => {
 };
 
 // Function to convert a task to Smartsheet row format
-const taskToRow = (task: TaskData) => {
+const taskToRow = (task: TaskData, rowId?: number) => {
   return {
+    id: rowId, // Include row ID if available (required for updates)
     cells: [
       { columnId: COLUMNS.TASK_ID, value: task.id || generateUniqueId() },
       { columnId: COLUMNS.TASK_TYPE, value: task.taskType },
@@ -102,7 +104,8 @@ export const rowToTask = (row: any): TaskData => {
     team: getCellValue(COLUMNS.TEAM) ? getCellValue(COLUMNS.TEAM).split(", ") : [],
     requestor: getCellValue(COLUMNS.REQUESTOR),
     requestorEmail: getCellValue(COLUMNS.REQUESTOR_EMAIL),
-    requestorId: getCellValue(COLUMNS.REQUESTOR_ID)
+    requestorId: getCellValue(COLUMNS.REQUESTOR_ID),
+    rowId: row.id // Save the Smartsheet row ID
   };
 };
 
@@ -186,7 +189,8 @@ export const smartsheetApi = {
         throw new Error("Task not found");
       }
       
-      const row = taskToRow(task);
+      // Use the rowId from the existing task
+      const row = taskToRow(task, existingTask.rowId);
       
       const response = await fetch(`${API_URL}/sheets/${SHEET_ID}/rows`, {
         method: "PUT",

@@ -1,4 +1,3 @@
-import React from 'react';
 import { parse, format, differenceInDays, isWithinInterval, addDays } from 'date-fns';
 import { TaskData } from '@/services/smartsheetApi';
 import { stringToColor } from '@/lib/utils';
