@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -93,6 +92,7 @@ const NewRequest: React.FC = () => {
   const form = useForm<NewRequestFormValues>({
     resolver: zodResolver(newRequestSchema),
     defaultValues,
+    mode: 'onChange',
   });
   
   // Handle form submission
@@ -338,7 +338,16 @@ const NewRequest: React.FC = () => {
                             <Calendar
                               mode="single"
                               selected={field.value}
-                              onSelect={field.onChange}
+                              onSelect={(date) => {
+                                field.onChange(date);
+                                // Auto-focus on end date after selecting start date
+                                setTimeout(() => {
+                                  const endDateButton = document.querySelector('[name="endDate"]')?.closest('.flex.flex-col')?.querySelector('button');
+                                  if (endDateButton) {
+                                    (endDateButton as HTMLButtonElement).click();
+                                  }
+                                }, 100);
+                              }}
                               initialFocus
                               className="pointer-events-auto"
                             />

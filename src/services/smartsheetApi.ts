@@ -1,29 +1,29 @@
-
 import { toast } from "sonner";
 
 const SMARTSHEET_API_KEY = "mcQHLLu8W9A0uUtAmgYaFsQE8yH1QWKUYNcoq";
 const SHEET_ID = "Xm5q7pjVVRWXrHPRg73Qv79Xh96CgCVGvXcg4hm1";
-const API_URL = "https://api.smartsheet.com/2.0";
+// Use proxy URL instead of direct API URL to avoid CORS issues
+const API_URL = "/api/smartsheet";
 
 // Column IDs for all fields
 export const COLUMNS = {
-  TASK_ID: 7329347793014660,
-  TASK_TYPE: 292473375248260,
-  SPONSOR: 8455247699857284,
-  PROJECT_NAME: 1825748165644164,
-  EDC_SYSTEM: 3951648072486788,
-  INTEGRATIONS: 5921972909461380,
+  TASK_ID: 1542486025785220,
+  TASK_TYPE: 3794285839470468,
+  SPONSOR: 292473375248260,
+  PROJECT_NAME: 6046085653155716,
+  EDC_SYSTEM: 979536072363908,
+  INTEGRATIONS: 5483135699734404,
   DESCRIPTION: 1418373282090884,
-  START_DATE: 1699848258801540,
-  END_DATE: 6203447886172036,
-  SCOPED_HOURS: 3951648072486788,
-  STATUS: 4796073002618756,
-  ALLOCATED: 2544273188933508,
-  TEAM: 7047872816304004,
-  REQUESTOR: 7329347793014660,
-  REQUESTOR_EMAIL: 1825748165644164,
-  REQUESTOR_ID: 292473375248260,
-  PRIORITY: 8297885466840964
+  START_DATE: 7329347793014660,
+  END_DATE: 1699848258801540,
+  SCOPED_HOURS: 6203447886172036,
+  STATUS: 4675173699768196,
+  ALLOCATED: 3951648072486788,
+  TEAM: 8455247699857284,
+  REQUESTOR: 4796073002618756,
+  REQUESTOR_EMAIL: 2544273188933508,
+  REQUESTOR_ID: 7047872816304004,
+  PRIORITY: 4486824754106244
 };
 
 // Interface for task data
@@ -114,8 +114,8 @@ export const smartsheetApi = {
       const response = await fetch(`${API_URL}/sheets/${SHEET_ID}`, {
         method: "GET",
         headers: {
-          "Authorization": `Bearer ${SMARTSHEET_API_KEY}`,
           "Content-Type": "application/json"
+          // Authorization header is added by the proxy
         }
       });
       
@@ -152,8 +152,8 @@ export const smartsheetApi = {
       const response = await fetch(`${API_URL}/sheets/${SHEET_ID}/rows`, {
         method: "POST",
         headers: {
-          "Authorization": `Bearer ${SMARTSHEET_API_KEY}`,
           "Content-Type": "application/json"
+          // Authorization header is added by the proxy
         },
         body: JSON.stringify([row])
       });
@@ -191,8 +191,8 @@ export const smartsheetApi = {
       const response = await fetch(`${API_URL}/sheets/${SHEET_ID}/rows`, {
         method: "PUT",
         headers: {
-          "Authorization": `Bearer ${SMARTSHEET_API_KEY}`,
           "Content-Type": "application/json"
+          // Authorization header is added by the proxy
         },
         body: JSON.stringify([row])
       });
