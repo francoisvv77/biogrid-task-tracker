@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { TaskData, smartsheetApi } from '@/services/smartsheetApi';
 
@@ -86,7 +85,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   ]);
 
   // Requestors state
-  const [requestors, setRequestors] = useState<Requestor[]>([]);
+  const [requestors, setRequestors] = useState<Requestor[]>([
+    { id: generateId(), name: 'Requestor', email: 'requestor@bioforumgroup.com' }
+  ]);
 
   // Fetch tasks on component mount
   useEffect(() => {

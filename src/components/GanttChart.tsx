@@ -1,80 +1,48 @@
-
 import React from 'react';
-import { 
-  BarChart, 
-  Bar, 
-  XAxis, 
-  YAxis, 
-  Tooltip, 
-  ResponsiveContainer,
-  CartesianGrid,
-  Legend,
-  Cell
-} from 'recharts';
-import { parse, differenceInDays, format, addDays } from 'date-fns';
+import { parse, format, differenceInDays, isWithinInterval, addDays } from 'date-fns';
 import { TaskData } from '@/services/smartsheetApi';
+import { stringToColor } from '@/lib/utils';
 
 interface GanttChartProps {
   tasks: TaskData[];
 }
 
 const GanttChart: React.FC<GanttChartProps> = ({ tasks }) => {
-  // Parse tasks and prepare them for Gantt chart display
-  const ganttData = tasks.map(task => {
+  // If no tasks, display a message
+  if (tasks.length === 0) {
+    return <div className="flex items-center justify-center h-[300px] text-muted-foreground">No tasks to display</div>;
+  }
+
+  // Find the min and max dates to establish time range
+  const allDates: Date[] = [];
+  
+  tasks.forEach(task => {
     const startDate = parse(task.startDate, 'yyyy-MM-dd', new Date());
     const endDate = parse(task.endDate, 'yyyy-MM-dd', new Date());
-    const duration = differenceInDays(endDate, startDate) + 1; // +1 to include the end date
     
-    return {
-      name: task.projectName,
-      id: task.id,
-      sponsor: task.sponsor,
-      taskType: task.taskType,
-      status: task.status,
-      priority: task.priority || 'Medium',
-      startDate: task.startDate,
-      endDate: task.endDate,
-      duration: duration,
-      team: task.team || [],
-      leadBuilder: task.allocated || 'Unassigned',
-    };
+    if (!isNaN(startDate.getTime())) allDates.push(startDate);
+    if (!isNaN(endDate.getTime())) allDates.push(endDate);
   });
   
-  // Sort tasks by start date
-  ganttData.sort((a, b) => {
-    return new Date(a.startDate).getTime() - new Date(b.startDate).getTime();
-  });
-  
-  // Find min and max dates to establish the chart range
-  let minDate = new Date();
-  let maxDate = new Date();
-  
-  if (ganttData.length > 0) {
-    minDate = parse(ganttData[0].startDate, 'yyyy-MM-dd', new Date());
-    maxDate = parse(ganttData[0].endDate, 'yyyy-MM-dd', new Date());
-    
-    ganttData.forEach(task => {
-      const taskStart = parse(task.startDate, 'yyyy-MM-dd', new Date());
-      const taskEnd = parse(task.endDate, 'yyyy-MM-dd', new Date());
-      
-      if (taskStart < minDate) minDate = taskStart;
-      if (taskEnd > maxDate) maxDate = taskEnd;
-    });
+  // If no valid dates, return a message
+  if (allDates.length === 0) {
+    return <div className="flex items-center justify-center h-[300px] text-muted-foreground">No valid dates found in tasks</div>;
   }
   
-  // Add some padding to the date range
-  minDate = addDays(minDate, -2);
-  maxDate = addDays(maxDate, 2);
+  const minDate = new Date(Math.min(...allDates.map(d => d.getTime())));
+  const maxDate = new Date(Math.max(...allDates.map(d => d.getTime())));
   
-  // Create date tick array for the x-axis
-  const ticks = [];
-  let currentDate = minDate;
-  while (currentDate <= maxDate) {
-    ticks.push(format(currentDate, 'yyyy-MM-dd'));
-    currentDate = addDays(currentDate, 7); // Weekly ticks
-  }
+  // Add padding to the date range
+  const startDate = addDays(minDate, -2);
+  const endDate = addDays(maxDate, 2);
   
-  // Status colors
+  // Calculate the total number of days in the range
+  const totalDays = differenceInDays(endDate, startDate) + 1;
+  
+  // Generate an array of dates for the header
+  const dateHeaders = Array.from({ length: totalDays }, (_, i) => addDays(startDate, i));
+  
+  // Function to get task status color
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'Pending Allocation': return '#f97316'; // Orange
@@ -88,60 +56,73 @@ const GanttChart: React.FC<GanttChartProps> = ({ tasks }) => {
     }
   };
   
-  // Custom tooltip
-  const CustomTooltip = ({ active, payload }: any) => {
-    if (active && payload && payload.length) {
-      const data = payload[0].payload;
-      return (
-        <div className="bg-white p-3 border rounded-md shadow-md text-sm">
-          <p className="font-semibold">{data.name}</p>
-          <p>Sponsor: {data.sponsor}</p>
-          <p>Type: {data.taskType}</p>
-          <p>Priority: {data.priority}</p>
-          <p>Status: {data.status}</p>
-          <p>Duration: {data.duration} days</p>
-          <p>Lead: {data.leadBuilder}</p>
-          <p>Timeline: {data.startDate} to {data.endDate}</p>
-        </div>
-      );
-    }
-    
-    return null;
-  };
+  // Today's date for highlighting
+  const today = new Date();
   
   return (
-    <div className="w-full h-[400px] mt-4">
+    <div className="w-full mt-4">
       <h3 className="text-lg font-medium mb-2">Task Timeline</h3>
-      <ResponsiveContainer width="100%" height="100%">
-        <BarChart
-          layout="vertical"
-          data={ganttData}
-          margin={{ top: 20, right: 30, left: 150, bottom: 20 }}
-          barSize={20}
-        >
-          <CartesianGrid strokeDasharray="3 3" />
-          <XAxis 
-            dataKey="startDate" 
-            type="category" 
-            ticks={ticks}
-            tickFormatter={(tickItem) => format(parse(tickItem, 'yyyy-MM-dd', new Date()), 'MMM d')}
-            allowDataOverflow={true}
-          />
-          <YAxis 
-            dataKey="name" 
-            type="category" 
-            width={120}
-            tickFormatter={(value) => value.length > 15 ? `${value.substr(0, 15)}...` : value}
-          />
-          <Tooltip content={<CustomTooltip />} />
-          <Legend />
-          <Bar dataKey="duration" name="Duration">
-            {ganttData.map((entry, index) => (
-              <Cell key={`cell-${index}`} fill={getStatusColor(entry.status || '')} />
-            ))}
-          </Bar>
-        </BarChart>
-      </ResponsiveContainer>
+      <div className="border rounded-md overflow-auto" style={{ maxHeight: '500px' }}>
+        <div className="min-w-max">
+          {/* Date headers */}
+          <div className="flex border-b sticky top-0 bg-white z-10">
+            <div className="w-64 min-w-64 p-2 font-medium border-r bg-gray-50">Task</div>
+            {dateHeaders.map((date, index) => {
+              const isToday = format(date, 'yyyy-MM-dd') === format(today, 'yyyy-MM-dd');
+              const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+              
+              return (
+                <div 
+                  key={index} 
+                  className={`w-12 min-w-12 p-1 text-center text-xs border-r ${isToday ? 'bg-red-50 font-bold' : isWeekend ? 'bg-gray-50' : ''}`}
+                >
+                  {index % 3 === 0 && format(date, 'MMM d')}
+                  {isToday && <div className="w-full h-1 bg-red-500 mt-1"></div>}
+                </div>
+              );
+            })}
+          </div>
+          
+          {/* Task rows */}
+          {tasks.map((task, taskIndex) => {
+            const taskStartDate = parse(task.startDate, 'yyyy-MM-dd', new Date());
+            const taskEndDate = parse(task.endDate, 'yyyy-MM-dd', new Date());
+            
+            // Skip tasks with invalid dates
+            if (isNaN(taskStartDate.getTime()) || isNaN(taskEndDate.getTime())) {
+              return null;
+            }
+            
+            // Calculate task position and width
+            const startOffset = Math.max(0, differenceInDays(taskStartDate, startDate));
+            const duration = differenceInDays(taskEndDate, taskStartDate) + 1;
+            const taskColor = getStatusColor(task.status || '');
+            
+            return (
+              <div key={taskIndex} className="flex border-b hover:bg-gray-50">
+                <div className="w-64 min-w-64 p-2 border-r truncate" title={task.projectName}>
+                  {task.projectName}
+                </div>
+                <div className="relative h-10 flex-grow">
+                  {/* Task bar */}
+                  <div 
+                    className="absolute h-6 rounded-md top-2 flex items-center justify-center text-xs text-white font-medium shadow-sm transition-all hover:h-7 hover:top-1.5 hover:z-10"
+                    style={{ 
+                      left: `${startOffset * 48}px`,
+                      width: `${duration * 48}px`,
+                      backgroundColor: taskColor,
+                      minWidth: '24px'
+                    }}
+                    title={`${task.projectName} (${task.status})\nStart: ${task.startDate}\nEnd: ${task.endDate}`}
+                  >
+                    {duration > 1 ? task.projectName.substring(0, 10) + (task.projectName.length > 10 ? '...' : '') : ''}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
     </div>
   );
 };
