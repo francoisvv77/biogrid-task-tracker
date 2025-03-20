@@ -1,23 +1,17 @@
 
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useAppContext } from '@/context/AppContext';
-import { 
-  Card, 
-  CardContent, 
-  CardDescription, 
-  CardHeader, 
-  CardTitle 
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
 } from '@/components/ui/card';
-import { 
-  Filter, 
-  Calendar, 
-  Clock, 
-  AlertCircle, 
-  CheckCircle,
-  ListChecks,
-  Loader2
-} from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import {
   Select,
   SelectContent,
@@ -25,335 +19,308 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Button } from '@/components/ui/button';
+import { 
+  ClipboardList, 
+  Hourglass, 
+  Clock, 
+  AlertCircle, 
+  CheckCircle2, 
+  BarChart4,
+  Search,
+  Filter
+} from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import GanttChart from '@/components/GanttChart';
 import { TaskData } from '@/services/smartsheetApi';
 
-// Dashboard stat card component
-interface StatCardProps {
-  title: string;
-  value: number;
-  description: string;
-  icon: React.ReactNode;
-  onClick: () => void;
-  active: boolean;
-}
-
-const StatCard: React.FC<StatCardProps> = ({
-  title,
-  value,
-  description,
-  icon,
-  onClick,
-  active
-}) => (
-  <motion.div
-    whileHover={{ y: -5, transition: { duration: 0.2 } }}
-    whileTap={{ scale: 0.98 }}
-  >
-    <Card 
-      className={`h-full cursor-pointer transition-all ${
-        active ? 'ring-2 ring-primary shadow-md' : 'hover:shadow-md'
-      }`}
-      onClick={onClick}
-    >
-      <CardHeader className="flex flex-row items-center justify-between pb-2">
-        <CardTitle className="text-sm font-medium">{title}</CardTitle>
-        <div className={`p-2.5 rounded-full ${active ? 'bg-primary/10 text-primary' : 'bg-gray-100'}`}>
-          {icon}
-        </div>
-      </CardHeader>
-      <CardContent>
-        <div className="text-3xl font-bold">{value}</div>
-        <CardDescription className="text-xs mt-1">{description}</CardDescription>
-      </CardContent>
-    </Card>
-  </motion.div>
-);
-
-// Helper functions for task filtering
-const isTaskDueThisWeek = (endDate: string) => {
-  const today = new Date();
-  const endOfWeek = new Date(today);
-  endOfWeek.setDate(today.getDate() + (7 - today.getDay()));
-  
-  const taskEndDate = new Date(endDate);
-  return taskEndDate >= today && taskEndDate <= endOfWeek;
-};
-
-const isTaskOverdue = (endDate: string, status: string) => {
-  const today = new Date();
-  const taskEndDate = new Date(endDate);
-  
-  return taskEndDate < today && !['Completed', 'Cancelled'].includes(status || '');
-};
-
-// Dashboard page component
 const Dashboard: React.FC = () => {
-  const { tasks, edcSystems, teamMembers, loading, error, refreshTasks } = useAppContext();
-  const [filteredTasks, setFilteredTasks] = useState<TaskData[]>([]);
-  const [activeFilter, setActiveFilter] = useState<string>('all');
+  const navigate = useNavigate();
+  const { tasks, teamMembers, edcSystems, loading, error, refreshTasks } = useAppContext();
   
-  // Filter states
-  const [systemFilter, setSystemFilter] = useState<string>('');
-  const [builderFilter, setBuilderFilter] = useState<string>('');
-  const [statusFilter, setStatusFilter] = useState<string>('');
+  // Filters
+  const [edcFilter, setEdcFilter] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [builderFilter, setBuilderFilter] = useState<string>('all');
+  const [searchTerm, setSearchTerm] = useState<string>('');
   
-  // Task counts
-  const totalTasks = tasks.length;
-  const pendingTasks = tasks.filter(task => task.status === 'Pending Allocation').length;
-  const tasksInProgress = tasks.filter(task => ['Assigned', 'In Progress', 'In Validation'].includes(task.status || '')).length;
-  const overdueTasks = tasks.filter(task => isTaskOverdue(task.endDate, task.status || '')).length;
-  const tasksDueThisWeek = tasks.filter(task => isTaskDueThisWeek(task.endDate)).length;
+  // Active card
+  const [activeCard, setActiveCard] = useState<string | null>(null);
   
-  // Filter tasks based on selected filters
-  useEffect(() => {
-    let filtered = [...tasks];
-    
-    // Apply system filter
-    if (systemFilter) {
-      filtered = filtered.filter(task => task.edcSystem === systemFilter);
-    }
-    
-    // Apply builder filter
-    if (builderFilter) {
-      filtered = filtered.filter(task => 
-        task.allocated === builderFilter || 
-        (task.team && task.team.includes(builderFilter))
-      );
-    }
-    
-    // Apply status filter
-    if (statusFilter) {
-      filtered = filtered.filter(task => task.status === statusFilter);
-    }
-    
-    // Apply card filter
-    if (activeFilter === 'pending') {
-      filtered = filtered.filter(task => task.status === 'Pending Allocation');
-    } else if (activeFilter === 'in-progress') {
-      filtered = filtered.filter(task => 
-        ['Assigned', 'In Progress', 'In Validation'].includes(task.status || '')
-      );
-    } else if (activeFilter === 'overdue') {
-      filtered = filtered.filter(task => isTaskOverdue(task.endDate, task.status || ''));
-    } else if (activeFilter === 'due-this-week') {
-      filtered = filtered.filter(task => isTaskDueThisWeek(task.endDate));
-    }
-    
-    setFilteredTasks(filtered);
-  }, [tasks, systemFilter, builderFilter, statusFilter, activeFilter]);
-  
-  // Handle filter changes
-  const handleCardFilter = (filter: string) => {
-    setActiveFilter(filter === activeFilter ? 'all' : filter);
+  // Calculate metrics
+  const metrics = {
+    total: tasks.length,
+    pending: tasks.filter(task => task.status === 'Pending Allocation').length,
+    inProgress: tasks.filter(task => task.status === 'In Progress').length,
+    dueThisWeek: tasks.filter(task => {
+      const endDate = new Date(task.endDate);
+      const today = new Date();
+      const nextWeek = new Date();
+      nextWeek.setDate(today.getDate() + 7);
+      return endDate >= today && endDate <= nextWeek;
+    }).length,
+    completed: tasks.filter(task => task.status === 'Completed').length,
   };
   
-  // Reset all filters
-  const resetFilters = () => {
-    setSystemFilter('');
-    setBuilderFilter('');
-    setStatusFilter('');
-    setActiveFilter('all');
+  // Filtered tasks
+  const filteredTasks = tasks.filter(task => {
+    // EDC Filter
+    if (edcFilter !== 'all' && task.edcSystem !== edcFilter) return false;
+    
+    // Status Filter
+    if (statusFilter !== 'all' && task.status !== statusFilter) return false;
+    
+    // Builder Filter
+    if (builderFilter !== 'all') {
+      const isLeadBuilder = task.allocated === builderFilter;
+      const isTeamMember = task.team?.includes(builderFilter);
+      if (!isLeadBuilder && !isTeamMember) return false;
+    }
+    
+    // Card Filter
+    if (activeCard === 'pending' && task.status !== 'Pending Allocation') return false;
+    if (activeCard === 'inProgress' && task.status !== 'In Progress') return false;
+    if (activeCard === 'dueThisWeek') {
+      const endDate = new Date(task.endDate);
+      const today = new Date();
+      const nextWeek = new Date();
+      nextWeek.setDate(today.getDate() + 7);
+      if (!(endDate >= today && endDate <= nextWeek)) return false;
+    }
+    if (activeCard === 'completed' && task.status !== 'Completed') return false;
+    
+    // Search Term
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      return (
+        task.projectName.toLowerCase().includes(term) ||
+        task.sponsor.toLowerCase().includes(term) ||
+        task.description.toLowerCase().includes(term)
+      );
+    }
+    
+    return true;
+  });
+  
+  // Refresh tasks on mount
+  useEffect(() => {
+    refreshTasks();
+  }, []);
+  
+  // Handle card click
+  const handleCardClick = (cardType: string) => {
+    setActiveCard(activeCard === cardType ? null : cardType);
   };
   
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
           <p className="text-muted-foreground">
-            Track and manage your build tasks
+            Overview of all tasks and their status
           </p>
         </div>
-        <Button 
-          className="flex items-center gap-2" 
-          size="sm"
-          onClick={() => refreshTasks()}
-        >
-          <Loader2 className="h-4 w-4" />
-          Refresh
-        </Button>
+        <Button onClick={() => navigate('/new-request')}>New Request</Button>
       </div>
       
-      {/* Stats cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4">
-        <StatCard
-          title="Total Tasks"
-          value={totalTasks}
-          description="All tasks"
-          icon={<ListChecks className="h-4 w-4" />}
-          onClick={() => handleCardFilter('all')}
-          active={activeFilter === 'all'}
-        />
-        <StatCard
-          title="Pending Allocation"
-          value={pendingTasks}
-          description="Tasks waiting for team allocation"
-          icon={<Clock className="h-4 w-4" />}
-          onClick={() => handleCardFilter('pending')}
-          active={activeFilter === 'pending'}
-        />
-        <StatCard
-          title="In Progress"
-          value={tasksInProgress}
-          description="Tasks currently being worked on"
-          icon={<CheckCircle className="h-4 w-4" />}
-          onClick={() => handleCardFilter('in-progress')}
-          active={activeFilter === 'in-progress'}
-        />
-        <StatCard
-          title="Overdue"
-          value={overdueTasks}
-          description="Tasks past their deadline"
-          icon={<AlertCircle className="h-4 w-4" />}
-          onClick={() => handleCardFilter('overdue')}
-          active={activeFilter === 'overdue'}
-        />
-        <StatCard
-          title="Due This Week"
-          value={tasksDueThisWeek}
-          description="Tasks due in the next 7 days"
-          icon={<Calendar className="h-4 w-4" />}
-          onClick={() => handleCardFilter('due-this-week')}
-          active={activeFilter === 'due-this-week'}
-        />
-      </div>
+      {/* Metric Cards */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4"
+      >
+        {/* Total Tasks */}
+        <Card className={`cursor-pointer hover:shadow-md transition-shadow ${activeCard === 'total' ? 'ring-2 ring-primary' : ''}`}
+          onClick={() => handleCardClick('total')}>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">Total Tasks</CardTitle>
+            <BarChart4 className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{metrics.total}</div>
+            <p className="text-xs text-muted-foreground mt-1">All tasks</p>
+          </CardContent>
+        </Card>
+        
+        {/* Pending Allocation */}
+        <Card className={`cursor-pointer hover:shadow-md transition-shadow ${activeCard === 'pending' ? 'ring-2 ring-primary' : ''}`}
+          onClick={() => handleCardClick('pending')}>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">Pending Allocation</CardTitle>
+            <ClipboardList className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{metrics.pending}</div>
+            <p className="text-xs text-muted-foreground mt-1">Tasks awaiting allocation</p>
+          </CardContent>
+        </Card>
+        
+        {/* In Progress */}
+        <Card className={`cursor-pointer hover:shadow-md transition-shadow ${activeCard === 'inProgress' ? 'ring-2 ring-primary' : ''}`}
+          onClick={() => handleCardClick('inProgress')}>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">In Progress</CardTitle>
+            <Hourglass className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{metrics.inProgress}</div>
+            <p className="text-xs text-muted-foreground mt-1">Tasks currently being worked on</p>
+          </CardContent>
+        </Card>
+        
+        {/* Due This Week */}
+        <Card className={`cursor-pointer hover:shadow-md transition-shadow ${activeCard === 'dueThisWeek' ? 'ring-2 ring-primary' : ''}`}
+          onClick={() => handleCardClick('dueThisWeek')}>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">Due This Week</CardTitle>
+            <Clock className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{metrics.dueThisWeek}</div>
+            <p className="text-xs text-muted-foreground mt-1">Tasks due in the next 7 days</p>
+          </CardContent>
+        </Card>
+        
+        {/* Completed */}
+        <Card className={`cursor-pointer hover:shadow-md transition-shadow ${activeCard === 'completed' ? 'ring-2 ring-primary' : ''}`}
+          onClick={() => handleCardClick('completed')}>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">Completed</CardTitle>
+            <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{metrics.completed}</div>
+            <p className="text-xs text-muted-foreground mt-1">Tasks that have been completed</p>
+          </CardContent>
+        </Card>
+      </motion.div>
+      
+      {/* Gantt Chart */}
+      <Card>
+        <CardContent className="pt-6">
+          <GanttChart tasks={filteredTasks} />
+        </CardContent>
+      </Card>
       
       {/* Filters */}
-      <div className="flex flex-wrap items-center gap-4 p-4 bg-white rounded-lg shadow-sm">
-        <div className="flex items-center gap-2">
-          <Filter className="h-4 w-4 text-muted-foreground" />
-          <span className="text-sm font-medium">Filters:</span>
+      <div className="grid gap-4 grid-cols-1 md:grid-cols-4">
+        <div className="flex gap-2 items-center">
+          <Search className="h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search tasks..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full"
+          />
         </div>
         
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 flex-1">
-          <Select value={systemFilter} onValueChange={setSystemFilter}>
-            <SelectTrigger className="h-9">
-              <SelectValue placeholder="EDC System" />
-            </SelectTrigger>
-            <SelectContent>
-              {edcSystems.map(system => (
-                <SelectItem key={system} value={system}>
-                  {system}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          
-          <Select value={builderFilter} onValueChange={setBuilderFilter}>
-            <SelectTrigger className="h-9">
-              <SelectValue placeholder="Builder" />
-            </SelectTrigger>
-            <SelectContent>
-              {teamMembers.map(member => (
-                <SelectItem key={member.id} value={member.name}>
-                  {member.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="h-9">
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="Pending Allocation">Pending Allocation</SelectItem>
-              <SelectItem value="Assigned">Assigned</SelectItem>
-              <SelectItem value="In Progress">In Progress</SelectItem>
-              <SelectItem value="In Validation">In Validation</SelectItem>
-              <SelectItem value="Completed">Completed</SelectItem>
-              <SelectItem value="On Hold">On Hold</SelectItem>
-              <SelectItem value="Cancelled">Cancelled</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+        <Select value={edcFilter} onValueChange={setEdcFilter}>
+          <SelectTrigger>
+            <SelectValue placeholder="Filter by EDC System" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All EDC Systems</SelectItem>
+            {edcSystems.map(system => (
+              <SelectItem key={system} value={system}>{system}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         
-        <Button variant="outline" size="sm" onClick={resetFilters}>
-          Reset
-        </Button>
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger>
+            <SelectValue placeholder="Filter by Status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Statuses</SelectItem>
+            <SelectItem value="Pending Allocation">Pending Allocation</SelectItem>
+            <SelectItem value="Assigned">Assigned</SelectItem>
+            <SelectItem value="In Progress">In Progress</SelectItem>
+            <SelectItem value="In Validation">In Validation</SelectItem>
+            <SelectItem value="Completed">Completed</SelectItem>
+            <SelectItem value="On Hold">On Hold</SelectItem>
+            <SelectItem value="Cancelled">Cancelled</SelectItem>
+          </SelectContent>
+        </Select>
+        
+        <Select value={builderFilter} onValueChange={setBuilderFilter}>
+          <SelectTrigger>
+            <SelectValue placeholder="Filter by Builder" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Builders</SelectItem>
+            {teamMembers.map(member => (
+              <SelectItem key={member.id} value={member.name}>{member.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
       
-      {/* Tasks table */}
-      <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-        <div className="p-4 border-b">
-          <h2 className="font-medium">Task List</h2>
-          <p className="text-sm text-muted-foreground">
-            {filteredTasks.length} task{filteredTasks.length !== 1 ? 's' : ''} found
-          </p>
-        </div>
+      {/* Task List */}
+      <div className="space-y-4">
+        <h2 className="text-xl font-semibold">Tasks</h2>
         
         {loading ? (
-          <div className="flex justify-center items-center p-8">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          </div>
+          <div className="text-center py-8">Loading tasks...</div>
         ) : error ? (
-          <div className="p-8 text-center text-destructive">
-            <AlertCircle className="h-8 w-8 mx-auto mb-2" />
-            <p>{error}</p>
-          </div>
+          <div className="text-center py-8 text-red-500">{error}</div>
         ) : filteredTasks.length === 0 ? (
-          <div className="p-8 text-center text-muted-foreground">
-            No tasks found matching the current filters.
-          </div>
+          <div className="text-center py-8 text-muted-foreground">No tasks found matching the current filters</div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-muted/50">
-                <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">ID</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Study</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">EDC</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Lead</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Start Date</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">End Date</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {filteredTasks.map((task, index) => (
-                  <motion.tr 
-                    key={task.id}
-                    className="hover:bg-muted/30 transition-colors cursor-pointer"
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.05 }}
+          <div className="grid gap-4 grid-cols-1">
+            {filteredTasks.map(task => (
+              <Card key={task.id} className="overflow-hidden">
+                <CardHeader className="pb-2">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <CardTitle className="text-base">{task.projectName}</CardTitle>
+                      <CardDescription>{task.sponsor} • {task.edcSystem}</CardDescription>
+                    </div>
+                    <div className={`px-2 py-1 rounded-full text-xs font-medium
+                      ${task.status === 'Pending Allocation' ? 'bg-orange-100 text-orange-700' : ''}
+                      ${task.status === 'Assigned' ? 'bg-blue-100 text-blue-700' : ''}
+                      ${task.status === 'In Progress' ? 'bg-purple-100 text-purple-700' : ''}
+                      ${task.status === 'In Validation' ? 'bg-cyan-100 text-cyan-700' : ''}
+                      ${task.status === 'Completed' ? 'bg-green-100 text-green-700' : ''}
+                      ${task.status === 'On Hold' ? 'bg-gray-100 text-gray-700' : ''}
+                      ${task.status === 'Cancelled' ? 'bg-red-100 text-red-700' : ''}
+                    `}>
+                      {task.status}
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="pb-2">
+                  <p className="text-sm mb-2 line-clamp-2">{task.description}</p>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <p className="text-muted-foreground">Start Date</p>
+                      <p>{task.startDate}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">End Date</p>
+                      <p>{task.endDate}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Lead Builder</p>
+                      <p>{task.allocated || 'Not assigned'}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Scoped Hours</p>
+                      <p>{task.scopedHours}</p>
+                    </div>
+                  </div>
+                </CardContent>
+                <CardFooter className="flex justify-end pt-0">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => navigate(`/allocate-tasks?taskId=${task.id}`)}
                   >
-                    <td className="px-4 py-3 text-sm whitespace-nowrap">{task.id}</td>
-                    <td className="px-4 py-3 text-sm">{task.projectName}</td>
-                    <td className="px-4 py-3 text-sm">{task.edcSystem}</td>
-                    <td className="px-4 py-3 text-sm">{task.allocated || '-'}</td>
-                    <td className="px-4 py-3 text-sm">{new Date(task.startDate).toLocaleDateString()}</td>
-                    <td className="px-4 py-3 text-sm">
-                      <span 
-                        className={
-                          isTaskOverdue(task.endDate, task.status || '') 
-                            ? 'text-destructive font-medium' 
-                            : ''
-                        }
-                      >
-                        {new Date(task.endDate).toLocaleDateString()}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
-                        ${task.status === 'Pending Allocation' ? 'bg-yellow-100 text-yellow-800' :
-                          task.status === 'Assigned' ? 'bg-blue-100 text-blue-800' :
-                          task.status === 'In Progress' ? 'bg-indigo-100 text-indigo-800' :
-                          task.status === 'In Validation' ? 'bg-purple-100 text-purple-800' :
-                          task.status === 'Completed' ? 'bg-green-100 text-green-800' :
-                          task.status === 'On Hold' ? 'bg-gray-100 text-gray-800' :
-                          task.status === 'Cancelled' ? 'bg-red-100 text-red-800' :
-                          'bg-gray-100 text-gray-800'
-                        }`}
-                      >
-                        {task.status}
-                      </div>
-                    </td>
-                  </motion.tr>
-                ))}
-              </tbody>
-            </table>
+                    {task.status === 'Pending Allocation' ? 'Allocate' : 'View Details'}
+                  </Button>
+                </CardFooter>
+              </Card>
+            ))}
           </div>
         )}
       </div>

@@ -59,7 +59,8 @@ const newRequestSchema = z.object({
     required_error: 'End date is required',
   }),
   scopedHours: z.coerce.number().min(1, 'Scoped hours are required'),
-  requestorName: z.string().min(1, 'Your name is required'),
+  requestorId: z.string().min(1, 'Requestor is required'),
+  requestorName: z.string().min(1, 'Requestor name is required'),
   requestorEmail: z.string().email('Please enter a valid email address'),
 });
 
@@ -81,6 +82,7 @@ const NewRequest: React.FC = () => {
     startDate: new Date(),
     endDate: new Date(),
     scopedHours: 0,
+    requestorId: '',
     requestorName: '',
     requestorEmail: '',
   };
@@ -98,7 +100,6 @@ const NewRequest: React.FC = () => {
     try {
       // Generate unique IDs
       const taskId = generateUniqueId();
-      const requestorId = generateUniqueId();
       
       // Format dates
       const startDateFormatted = format(data.startDate, 'yyyy-MM-dd');
@@ -119,8 +120,10 @@ const NewRequest: React.FC = () => {
         status: 'Pending Allocation',
         requestor: data.requestorName,
         requestorEmail: data.requestorEmail,
-        requestorId: requestorId,
+        requestorId: data.requestorId,
       };
+      
+      console.log("Submitting task:", taskData);
       
       // Submit the task
       const result = await addTask(taskData);
@@ -128,6 +131,8 @@ const NewRequest: React.FC = () => {
       if (result) {
         toast.success('Request submitted successfully!');
         navigate('/');
+      } else {
+        toast.error('Failed to submit request. Please try again.');
       }
     } catch (error) {
       console.error('Error submitting request:', error);
@@ -141,9 +146,13 @@ const NewRequest: React.FC = () => {
   const startDate = form.watch('startDate');
 
   // Helper function for requestor selection
-  const handleRequestorSelect = (requestor: { name: string; email: string }) => {
-    form.setValue('requestorName', requestor.name);
-    form.setValue('requestorEmail', requestor.email);
+  const handleRequestorSelect = (requestorId: string) => {
+    const selectedRequestor = requestors.find(r => r.id === requestorId);
+    if (selectedRequestor) {
+      form.setValue('requestorId', selectedRequestor.id);
+      form.setValue('requestorName', selectedRequestor.name);
+      form.setValue('requestorEmail', selectedRequestor.email);
+    }
   };
   
   return (
@@ -301,9 +310,7 @@ const NewRequest: React.FC = () => {
                             <Calendar
                               mode="single"
                               selected={field.value}
-                              onSelect={(date) => {
-                                if (date) field.onChange(date);
-                              }}
+                              onSelect={field.onChange}
                               initialFocus
                               className="pointer-events-auto"
                             />
@@ -344,9 +351,7 @@ const NewRequest: React.FC = () => {
                             <Calendar
                               mode="single"
                               selected={field.value}
-                              onSelect={(date) => {
-                                if (date) field.onChange(date);
-                              }}
+                              onSelect={field.onChange}
                               disabled={(date) => date < startDate}
                               initialFocus
                               className="pointer-events-auto"
@@ -400,62 +405,79 @@ const NewRequest: React.FC = () => {
                 
                 {/* Requestor Information */}
                 <div className="bg-muted/30 p-4 rounded-lg">
-                  <div className="flex justify-between items-center mb-4">
-                    <h3 className="font-medium">Requestor Information</h3>
-                    {requestors.length > 0 && (
-                      <Select
-                        onValueChange={(value) => {
-                          const selectedRequestor = requestors.find(r => r.id === value);
-                          if (selectedRequestor) {
-                            handleRequestorSelect(selectedRequestor);
-                          }
-                        }}
-                      >
-                        <SelectTrigger className="w-[200px]">
-                          <SelectValue placeholder="Select a requestor" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {requestors.map(requestor => (
-                            <SelectItem key={requestor.id} value={requestor.id}>
-                              {requestor.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    )}
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <h3 className="font-medium mb-4">Requestor Information</h3>
+                  
+                  <div className="space-y-4">
                     <FormField
                       control={form.control}
-                      name="requestorName"
+                      name="requestorId"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Your Name</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Enter your name" {...field} />
-                          </FormControl>
+                          <FormLabel>Requestor</FormLabel>
+                          <Select 
+                            onValueChange={(value) => {
+                              field.onChange(value);
+                              handleRequestorSelect(value);
+                            }} 
+                            value={field.value}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select a requestor" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {requestors.map(requestor => (
+                                <SelectItem key={requestor.id} value={requestor.id}>
+                                  {requestor.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                           <FormMessage />
+                          {requestors.length === 0 && (
+                            <p className="text-xs text-muted-foreground mt-1">
+                              No requestors available. Add requestors in Settings.
+                            </p>
+                          )}
                         </FormItem>
                       )}
                     />
                     
-                    <FormField
-                      control={form.control}
-                      name="requestorEmail"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Your Email</FormLabel>
-                          <FormControl>
-                            <Input 
-                              type="email"
-                              placeholder="Enter your email address" 
-                              {...field} 
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="requestorName"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Requestor Name</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Name will appear here" {...field} readOnly />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      
+                      <FormField
+                        control={form.control}
+                        name="requestorEmail"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Requestor Email</FormLabel>
+                            <FormControl>
+                              <Input 
+                                type="email"
+                                placeholder="Email will appear here" 
+                                {...field} 
+                                readOnly
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
                   </div>
                 </div>
                 

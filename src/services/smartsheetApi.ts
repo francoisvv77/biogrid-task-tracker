@@ -1,3 +1,4 @@
+
 import { toast } from "sonner";
 
 const SMARTSHEET_API_KEY = "mcQHLLu8W9A0uUtAmgYaFsQE8yH1QWKUYNcoq";
@@ -115,8 +116,8 @@ export const smartsheetApi = {
       });
       
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || "Failed to fetch tasks");
+        console.error("Smartsheet API error:", await response.text());
+        throw new Error("Failed to fetch tasks");
       }
       
       const data = await response.json();
@@ -129,7 +130,7 @@ export const smartsheetApi = {
   },
   
   // Add a new task to Smartsheet
-  addTask: async (task: TaskData): Promise<TaskData | null> => {
+  addTask: async (task: TaskData): Promise<boolean> => {
     try {
       // Ensure task has a unique ID
       if (!task.id) {
@@ -142,6 +143,7 @@ export const smartsheetApi = {
       }
       
       const row = taskToRow(task);
+      console.log("Sending task to Smartsheet:", JSON.stringify(row));
       
       const response = await fetch(`${API_URL}/sheets/${SHEET_ID}/rows`, {
         method: "POST",
@@ -152,17 +154,20 @@ export const smartsheetApi = {
         body: JSON.stringify([row])
       });
       
+      const responseData = await response.text();
+      console.log("Smartsheet API response:", responseData);
+      
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || "Failed to create task");
+        console.error("Error response:", responseData);
+        throw new Error("Failed to create task");
       }
       
       toast.success("Task created successfully");
-      return task;
+      return true;
     } catch (error) {
       console.error("Error adding task:", error);
       toast.error("Failed to create task. Please try again.");
-      return null;
+      return false;
     }
   },
   
@@ -189,8 +194,8 @@ export const smartsheetApi = {
       });
       
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || "Failed to update task");
+        console.error("Error response:", await response.text());
+        throw new Error("Failed to update task");
       }
       
       toast.success("Task updated successfully");
