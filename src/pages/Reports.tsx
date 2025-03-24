@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import {
@@ -69,15 +68,35 @@ const Reports: React.FC = () => {
   // Calculate resource allocation
   const builders = teamMembers.filter(member => member.role === 'Builder');
   const resourceAllocation = builders.map(builder => {
-    const assignedTasks = tasks.filter(task => 
-      task.allocated === builder.name || 
-      (task.team && task.team.includes(builder.name))
+    // Get tasks where the builder is the lead
+    const leadTasks = tasks.filter(task => task.allocated === builder.name);
+    
+    // Get tasks where the builder is a team member
+    const supportTasks = tasks.filter(task => 
+      task.team && task.team.includes(builder.name) && task.allocated !== builder.name
     );
+    
+    // Calculate hours for lead tasks (10% more for lead)
+    const leadHours = leadTasks.reduce((sum, task) => {
+      const totalHours = task.scopedHours || 0;
+      const teamSize = (task.team?.length || 0) + 1; // +1 for the lead
+      const baseHoursPerPerson = totalHours / teamSize;
+      return sum + (baseHoursPerPerson * 1.1); // Add 10% for lead
+    }, 0);
+    
+    // Calculate hours for support tasks
+    const supportHours = supportTasks.reduce((sum, task) => {
+      const totalHours = task.scopedHours || 0;
+      const teamSize = (task.team?.length || 0) + 1; // +1 for the lead
+      return sum + (totalHours / teamSize);
+    }, 0);
     
     return {
       name: builder.name,
-      tasks: assignedTasks.length,
-      hours: assignedTasks.reduce((sum, task) => sum + (task.scopedHours || 0), 0)
+      leadTasks: leadTasks.length,
+      supportTasks: supportTasks.length,
+      leadHours: Math.round(leadHours),
+      supportHours: Math.round(supportHours)
     };
   });
   
@@ -151,7 +170,7 @@ const Reports: React.FC = () => {
                     <span>Team Workload</span>
                   </CardTitle>
                   <CardDescription>
-                    Tasks allocated to each team member
+                    Tasks allocated to each team member as Lead and Support
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -171,7 +190,8 @@ const Reports: React.FC = () => {
                         />
                         <YAxis />
                         <Tooltip />
-                        <Bar dataKey="tasks" fill="#0088FE" name="Tasks" />
+                        <Bar dataKey="leadTasks" fill="#0088FE" name="Lead Tasks" stackId="a" />
+                        <Bar dataKey="supportTasks" fill="#00C49F" name="Support Tasks" stackId="a" />
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
@@ -185,7 +205,7 @@ const Reports: React.FC = () => {
                     <span>Hours Allocated</span>
                   </CardTitle>
                   <CardDescription>
-                    Total scoped hours per team member
+                    Scoped hours per team member as Lead and Support
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -205,7 +225,8 @@ const Reports: React.FC = () => {
                         />
                         <YAxis />
                         <Tooltip />
-                        <Bar dataKey="hours" fill="#00C49F" name="Scoped Hours" />
+                        <Bar dataKey="leadHours" fill="#0088FE" name="Lead Hours" stackId="a" />
+                        <Bar dataKey="supportHours" fill="#00C49F" name="Support Hours" stackId="a" />
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
