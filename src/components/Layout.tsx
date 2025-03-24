@@ -9,7 +9,8 @@ import {
   Users,
   Settings,
   BarChart,
-  Layers
+  Layers,
+  LineChart
 } from 'lucide-react';
 
 interface SidebarItemProps {
@@ -67,6 +68,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     { icon: <PlusCircle size={20} />, label: 'New Request', to: '/new-request' },
     { icon: <Layers size={20} />, label: 'Allocate Tasks', to: '/allocate', badge: unallocatedCount },
     { icon: <BarChart size={20} />, label: 'Reports', to: '/reports' },
+    { icon: <LineChart size={20} />, label: 'Metrics', to: '/metrics' },
     { icon: <Settings size={20} />, label: 'Settings', to: '/settings' }
   ];
 

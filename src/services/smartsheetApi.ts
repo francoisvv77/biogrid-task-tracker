@@ -52,6 +52,14 @@ export interface TaskData {
   rowId?: number; // Smartsheet row ID needed for updates
 }
 
+interface SmartsheetRow {
+  toTop?: boolean;
+  cells: {
+    columnId: number;
+    value: string | number;
+  }[];
+}
+
 // Function to generate a unique ID
 export const generateUniqueId = (): string => {
   return `TASK-${Date.now().toString(36)}-${Math.random().toString(36).substr(2, 5)}`.toUpperCase();
@@ -278,7 +286,27 @@ export const smartsheetApi = {
       toast.error("Failed to allocate task. Please try again.");
       return false;
     }
-  }
+  },
+
+  addRows: async (sheetId: string, rows: SmartsheetRow[]): Promise<void> => {
+    try {
+      const response = await fetch(`${API_URL}/sheets/${sheetId}/rows`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+          // Authorization header is added by the proxy
+        },
+        body: JSON.stringify(rows),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to add rows to Smartsheet');
+      }
+    } catch (error) {
+      console.error('Error adding rows to Smartsheet:', error);
+      throw error;
+    }
+  },
 };
 
 // Alias for backward compatibility if needed
