@@ -53,10 +53,11 @@ export interface TaskData {
 }
 
 interface SmartsheetRow {
+  id?: number;
   toTop?: boolean;
   cells: {
     columnId: number;
-    value: string | number;
+    value: any;
   }[];
 }
 
@@ -300,10 +301,34 @@ export const smartsheetApi = {
       });
 
       if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Smartsheet API error:', errorText);
         throw new Error('Failed to add rows to Smartsheet');
       }
     } catch (error) {
       console.error('Error adding rows to Smartsheet:', error);
+      throw error;
+    }
+  },
+
+  updateRows: async (sheetId: string, rows: SmartsheetRow[]): Promise<void> => {
+    try {
+      const response = await fetch(`${API_URL}/sheets/${sheetId}/rows`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+          // Authorization header is added by the proxy
+        },
+        body: JSON.stringify(rows),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Smartsheet API error:', errorText);
+        throw new Error('Failed to update rows in Smartsheet');
+      }
+    } catch (error) {
+      console.error('Error updating rows in Smartsheet:', error);
       throw error;
     }
   },

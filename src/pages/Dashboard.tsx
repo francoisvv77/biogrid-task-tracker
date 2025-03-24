@@ -31,6 +31,7 @@ import { Input } from '@/components/ui/input';
 import GanttChart from '@/components/GanttChart';
 import TaskDetailsModal from '@/components/TaskDetailsModal';
 import { TaskData } from '@/services/smartsheetApi';
+import { MultiSelect } from "@/components/ui/multi-select";
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -38,7 +39,7 @@ const Dashboard: React.FC = () => {
   
   // Filters
   const [edcFilter, setEdcFilter] = useState<string>('all');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [statusFilters, setStatusFilters] = useState<string[]>([]);
   const [builderFilter, setBuilderFilter] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState<string>('');
   
@@ -69,7 +70,7 @@ const Dashboard: React.FC = () => {
     if (edcFilter !== 'all' && task.edcSystem !== edcFilter) return false;
     
     // Status Filter
-    if (statusFilter !== 'all' && task.status !== statusFilter) return false;
+    if (statusFilters.length > 0 && !statusFilters.includes(task.status)) return false;
     
     // Builder Filter
     if (builderFilter !== 'all') {
@@ -232,21 +233,20 @@ const Dashboard: React.FC = () => {
           </SelectContent>
         </Select>
         
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger>
-            <SelectValue placeholder="Filter by Status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Statuses</SelectItem>
-            <SelectItem value="Pending Allocation">Pending Allocation</SelectItem>
-            <SelectItem value="Assigned">Assigned</SelectItem>
-            <SelectItem value="In Progress">In Progress</SelectItem>
-            <SelectItem value="In Validation">In Validation</SelectItem>
-            <SelectItem value="Completed">Completed</SelectItem>
-            <SelectItem value="On Hold">On Hold</SelectItem>
-            <SelectItem value="Cancelled">Cancelled</SelectItem>
-          </SelectContent>
-        </Select>
+        <MultiSelect
+          options={[
+            { value: "Pending Allocation", label: "Pending Allocation" },
+            { value: "Assigned", label: "Assigned" },
+            { value: "In Progress", label: "In Progress" },
+            { value: "In Validation", label: "In Validation" },
+            { value: "Completed", label: "Completed" },
+            { value: "On Hold", label: "On Hold" },
+            { value: "Cancelled", label: "Cancelled" }
+          ]}
+          selected={statusFilters}
+          onChange={setStatusFilters}
+          placeholder="Filter by Status"
+        />
         
         <Select value={builderFilter} onValueChange={setBuilderFilter}>
           <SelectTrigger>

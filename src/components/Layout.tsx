@@ -123,8 +123,8 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                 <Users size={16} />
               </div>
               <div>
-                <p className="text-sm font-medium">Bioforum Team</p>
-                <p className="text-xs text-gray-500">Data Systems</p>
+                <p className="text-sm font-medium">Francois van Vuuren</p>
+                <p className="text-xs text-gray-500">Director</p>
               </div>
             </div>
           </div>

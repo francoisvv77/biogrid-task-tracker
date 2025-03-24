@@ -188,7 +188,7 @@ const Metrics: React.FC = () => {
             existingMember.units = units;
             existingMember.errors = errors;
             existingMember.passRate = calculatePassRate(units, errors);
-            existingMember.metricId = metricId;
+            existingMember.metricId = row.id; // Store the Smartsheet row ID
           } else {
             metricsMap[task.id].teamMembers.push({
               name: employee,
@@ -196,7 +196,7 @@ const Metrics: React.FC = () => {
               units,
               errors,
               passRate: calculatePassRate(units, errors),
-              metricId
+              metricId: row.id // Store the Smartsheet row ID
             });
           }
         }
@@ -299,40 +299,61 @@ const Metrics: React.FC = () => {
   const saveMetricsToSmartsheet = async (taskId: string) => {
     try {
       setIsSubmitting(true);
-      
       const task = tasks.find(t => t.id === taskId);
       if (!task) return;
 
-      const metrics = taskMetrics[taskId];
-      if (!metrics) return;
+      const taskMetricsData = taskMetrics[taskId];
+      if (!taskMetricsData || !taskMetricsData.teamMembers || taskMetricsData.teamMembers.length === 0) return;
 
-      // Prepare rows for Smartsheet
-      const rows = metrics.teamMembers.map(member => ({
-        id: member.metricId,
-        toTop: true,
-        cells: [
-          { columnId: 8272663237840772, value: member.metricId || Date.now() },
-          { columnId: 281097919483780, value: member.name },
-          { columnId: 7181614843121540, value: task.sponsor },
-          { columnId: 1552115308908420, value: task.projectName },
-          { columnId: 5433382765023108, value: task.taskType },
-          { columnId: 3181582951337860, value: task.taskSubType || '' },
-          { columnId: 4784697546854276, value: member.units },
-          { columnId: 2532897733169028, value: member.errors },
-          { columnId: 929783137652612, value: member.passRate },
-        ]
-      }));
+      // Create rows for each team member's metrics
+      const rows = taskMetricsData.teamMembers.map(metric => {
+        // Create a unique metric ID for new records
+        const uniqueMetricId = `${taskId}-${metric.name.replace(/\s+/g, '-')}`;
+        
+        const rowData: any = {
+          cells: [
+            { columnId: 8272663237840772, value: uniqueMetricId }, // Metric ID (unique identifier)
+            { columnId: 281097919483780, value: metric.name }, // Employee
+            { columnId: 1552115308908420, value: task.projectName }, // Project
+            { columnId: 5433382765023108, value: task.taskType }, // Task Type
+            { columnId: 3181582951337860, value: task.taskSubType || '' }, // Task Sub Type
+            { columnId: 4784697546854276, value: metric.units }, // Units
+            { columnId: 2532897733169028, value: metric.errors }, // Errors
+            { columnId: 929783137652612, value: metric.passRate } // Pass Rate
+          ]
+        };
 
-      // Add or update rows in Smartsheet
-      await smartsheetApi.addRows('25HX5VvvvPPqvXw9rGxV63MMHC94W2vG4QgX8cP1', rows);
+        // Only add id if it exists (for updates)
+        if (metric.metricId) {
+          rowData.id = metric.metricId;
+        }
 
-      // Reload metrics after saving
-      await loadMetricsFromSmartsheet();
+        return rowData;
+      });
+
+      // Filter out any rows that don't have a metricId (these would be new entries)
+      const rowsToUpdate = rows.filter(row => row.id);
+      const rowsToAdd = rows.filter(row => !row.id);
+
+      // Update existing rows if any
+      if (rowsToUpdate.length > 0) {
+        // Update each row individually to avoid duplicate ID issues
+        for (const row of rowsToUpdate) {
+          await smartsheetApi.updateRows('25HX5VvvvPPqvXw9rGxV63MMHC94W2vG4QgX8cP1', [row]);
+        }
+      }
+
+      // Add new rows if any
+      if (rowsToAdd.length > 0) {
+        await smartsheetApi.addRows('25HX5VvvvPPqvXw9rGxV63MMHC94W2vG4QgX8cP1', rowsToAdd);
+      }
 
       toast({
         title: "Success",
         description: "Metrics have been saved to Smartsheet successfully.",
       });
+      // Reload metrics after saving
+      await loadMetricsFromSmartsheet();
     } catch (error) {
       console.error('Error saving metrics:', error);
       toast({
@@ -343,6 +364,18 @@ const Metrics: React.FC = () => {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  // Function to calculate overall pass rate for a task
+  const calculateOverallPassRate = (taskId: string): number => {
+    const metrics = taskMetrics[taskId];
+    if (!metrics || metrics.teamMembers.length === 0) return 0;
+
+    const totalUnits = metrics.teamMembers.reduce((sum, member) => sum + member.units, 0);
+    const totalErrors = metrics.teamMembers.reduce((sum, member) => sum + member.errors, 0);
+
+    if (totalUnits === 0) return 0;
+    return Number(((totalUnits - totalErrors) / totalUnits * 100).toFixed(2));
   };
 
   return (
@@ -411,6 +444,7 @@ const Metrics: React.FC = () => {
                   <TableHead>Project</TableHead>
                   <TableHead>Team Size</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead>Overall Pass Rate</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -418,6 +452,7 @@ const Metrics: React.FC = () => {
                   const metrics = getTaskMetrics(task.id || '');
                   const isExpanded = expandedTasks.has(task.id || '');
                   const teamSize = (task.team?.length || 0) + (task.allocated ? 1 : 0);
+                  const overallPassRate = calculateOverallPassRate(task.id || '');
 
                   return (
                     <React.Fragment key={task.id}>
@@ -443,10 +478,26 @@ const Metrics: React.FC = () => {
                           </div>
                         </TableCell>
                         <TableCell>{task.status}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <div className={`w-2 h-2 rounded-full ${
+                              overallPassRate >= 95 ? 'bg-green-500' :
+                              overallPassRate >= 90 ? 'bg-yellow-500' :
+                              'bg-red-500'
+                            }`} />
+                            <span className={`
+                              ${overallPassRate >= 95 ? 'text-green-600' :
+                                overallPassRate >= 90 ? 'text-yellow-600' :
+                                'text-red-600'}
+                            `}>
+                              {overallPassRate}%
+                            </span>
+                          </div>
+                        </TableCell>
                       </TableRow>
                       {isExpanded && (
                         <TableRow>
-                          <TableCell colSpan={5}>
+                          <TableCell colSpan={6}>
                             <div className="py-4">
                               <h4 className="font-medium mb-4">Team Metrics</h4>
                               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
