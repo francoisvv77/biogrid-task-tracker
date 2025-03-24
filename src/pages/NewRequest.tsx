@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { z } from 'zod';
@@ -46,11 +46,13 @@ import { toast } from 'sonner';
 // Form schema for new request
 const newRequestSchema = z.object({
   taskType: z.string().min(1, 'Task type is required'),
+  taskSubType: z.string().min(1, 'Task sub-type is required'),
   sponsor: z.string().min(1, 'Sponsor is required'),
   projectName: z.string().min(1, 'Study name is required'),
   priority: z.string().min(1, 'Priority is required'),
   edcSystem: z.string().min(1, 'EDC system is required'),
   integrations: z.string().optional(),
+  documentation: z.string().optional(),
   description: z.string().min(10, 'Description must be at least 10 characters'),
   startDate: z.date({
     required_error: 'Start date is required',
@@ -67,18 +69,23 @@ const newRequestSchema = z.object({
 type NewRequestFormValues = z.infer<typeof newRequestSchema>;
 
 const NewRequest: React.FC = () => {
-  const { addTask, edcSystems, requestors } = useAppContext();
+  const { addTask, edcSystems, requestors, addRequestor } = useAppContext();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isNewRequestor, setIsNewRequestor] = useState(false);
+  const [documentationPaths, setDocumentationPaths] = useState<string[]>([]);
+  const [newPath, setNewPath] = useState('');
   const navigate = useNavigate();
   
   // Default form values with current date for startDate and endDate
   const defaultValues: Partial<NewRequestFormValues> = {
     taskType: '',
+    taskSubType: '',
     sponsor: '',
     projectName: '',
     priority: 'Medium',
     edcSystem: '',
     integrations: '',
+    documentation: '',
     description: '',
     startDate: new Date(),
     endDate: new Date(),
@@ -95,11 +102,75 @@ const NewRequest: React.FC = () => {
     mode: 'onChange',
   });
   
+  // Watch for task sub-type to conditionally show fields
+  const taskSubType = form.watch('taskSubType');
+  
+  // Handle adding a new documentation path
+  const handleAddDocumentationPath = () => {
+    if (!newPath.trim()) return;
+    
+    setDocumentationPaths(prev => [...prev, newPath.trim()]);
+    setNewPath('');
+    
+    // Update the form field with all paths joined
+    const updatedPaths = [...documentationPaths, newPath.trim()].join('\n');
+    form.setValue('documentation', updatedPaths);
+  };
+  
+  // Handle removing a documentation path
+  const handleRemoveDocumentationPath = (indexToRemove: number) => {
+    setDocumentationPaths(prev => {
+      const newPaths = prev.filter((_, index) => index !== indexToRemove);
+      const updatedPathsString = newPaths.join('\n');
+      form.setValue('documentation', updatedPathsString);
+      return newPaths;
+    });
+  };
+  
+  // Handle select file for documentation
+  const handleSelectFile = () => {
+    // Create a file input element for selecting files
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    
+    fileInput.onchange = (e) => {
+      const target = e.target as HTMLInputElement;
+      if (target.files && target.files.length > 0) {
+        const file = target.files[0];
+        
+        // Just use the file name without simulating a path
+        setNewPath(file.name);
+      }
+      
+      // Clear the file input to prevent uploads
+      fileInput.value = '';
+    };
+    
+    fileInput.click();
+  };
+  
   // Handle form submission
   const onSubmit = async (data: NewRequestFormValues) => {
     setIsSubmitting(true);
     
     try {
+      // Handle new requestor creation if needed
+      if (isNewRequestor) {
+        const newRequestorResult = await addRequestor({
+          name: data.requestorName,
+          email: data.requestorEmail
+        });
+        
+        if (newRequestorResult) {
+          toast.success(`Added new requestor: ${data.requestorName}`);
+          // We don't need to update the requestorId as it will be properly set below
+        } else {
+          toast.error('Failed to add new requestor');
+          setIsSubmitting(false);
+          return;
+        }
+      }
+      
       // Generate unique IDs
       const taskId = generateUniqueId();
       
@@ -107,15 +178,22 @@ const NewRequest: React.FC = () => {
       const startDateFormatted = format(data.startDate, 'yyyy-MM-dd');
       const endDateFormatted = format(data.endDate, 'yyyy-MM-dd');
       
+      // Ensure documentation paths are joined
+      const documentationString = documentationPaths.length > 0 
+        ? documentationPaths.join('\n') 
+        : data.documentation || '';
+      
       // Create task object
       const taskData: TaskData = {
         id: taskId,
         taskType: data.taskType,
+        taskSubType: data.taskSubType,
         sponsor: data.sponsor,
         projectName: data.projectName,
         priority: data.priority,
         edcSystem: data.edcSystem,
         integrations: data.integrations || '',
+        documentation: documentationString,
         description: data.description,
         startDate: startDateFormatted,
         endDate: endDateFormatted,
@@ -123,7 +201,7 @@ const NewRequest: React.FC = () => {
         status: 'Pending Allocation',
         requestor: data.requestorName,
         requestorEmail: data.requestorEmail,
-        requestorId: data.requestorId,
+        requestorId: isNewRequestor ? generateUniqueId() : data.requestorId,
       };
       
       console.log("Submitting task:", taskData);
@@ -150,13 +228,38 @@ const NewRequest: React.FC = () => {
 
   // Helper function for requestor selection
   const handleRequestorSelect = (requestorId: string) => {
-    const selectedRequestor = requestors.find(r => r.id === requestorId);
-    if (selectedRequestor) {
-      form.setValue('requestorId', selectedRequestor.id);
-      form.setValue('requestorName', selectedRequestor.name);
-      form.setValue('requestorEmail', selectedRequestor.email);
+    if (requestorId === 'new') {
+      setIsNewRequestor(true);
+      form.setValue('requestorId', 'new');
+      form.setValue('requestorName', '');
+      form.setValue('requestorEmail', '');
+      
+      // Make the fields editable
+      setTimeout(() => {
+        const nameInput = document.querySelector('[name="requestorName"]') as HTMLInputElement;
+        const emailInput = document.querySelector('[name="requestorEmail"]') as HTMLInputElement;
+        if (nameInput) nameInput.readOnly = false;
+        if (emailInput) emailInput.readOnly = false;
+      }, 0);
+    } else {
+      setIsNewRequestor(false);
+      const selectedRequestor = requestors.find(r => r.id === requestorId);
+      if (selectedRequestor) {
+        form.setValue('requestorId', selectedRequestor.id);
+        form.setValue('requestorName', selectedRequestor.name);
+        form.setValue('requestorEmail', selectedRequestor.email);
+      }
     }
   };
+  
+  // Effect to update requestor fields' readonly status when isNewRequestor changes
+  useEffect(() => {
+    const nameInput = document.querySelector('[name="requestorName"]') as HTMLInputElement;
+    const emailInput = document.querySelector('[name="requestorEmail"]') as HTMLInputElement;
+    
+    if (nameInput) nameInput.readOnly = !isNewRequestor;
+    if (emailInput) emailInput.readOnly = !isNewRequestor;
+  }, [isNewRequestor]);
   
   return (
     <div className="space-y-6">
@@ -198,13 +301,65 @@ const NewRequest: React.FC = () => {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="Build">Build</SelectItem>
+                            <SelectItem value="New Build">New Build</SelectItem>
                             <SelectItem value="Amendment">Amendment</SelectItem>
-                            <SelectItem value="Maintenance">Maintenance</SelectItem>
-                            <SelectItem value="Other">Other</SelectItem>
+                            <SelectItem value="Integration">Integration</SelectItem>
+                            <SelectItem value="RTSM Setup">RTSM Setup</SelectItem>
                           </SelectContent>
                         </Select>
                         <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  {/* Task Sub-Type */}
+                  <FormField
+                    control={form.control}
+                    name="taskSubType"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Task Sub-Type</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select task sub-type" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="New Full Database Build">New Full Database Build</SelectItem>
+                            <SelectItem value="CRF/Form Updates">CRF/Form Updates</SelectItem>
+                            <SelectItem value="Edit Check Updates">Edit Check Updates</SelectItem>
+                            <SelectItem value="Custom Function Updates">Custom Function Updates</SelectItem>
+                            <SelectItem value="Visit Schedule Updates">Visit Schedule Updates</SelectItem>
+                            <SelectItem value="New External Data Integration">New External Data Integration</SelectItem>
+                            <SelectItem value="Migration of Existing Data">Migration of Existing Data</SelectItem>
+                            <SelectItem value="RTSM Setup">RTSM Setup</SelectItem>
+                            <SelectItem value="Integration">Integration</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                        
+                        {/* Integrations/Modules - only visible when Integration is selected */}
+                        {taskSubType === 'Integration' && (
+                          <div className="mt-2">
+                            <FormField
+                              control={form.control}
+                              name="integrations"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Integrations/Modules</FormLabel>
+                                  <FormControl>
+                                    <Input placeholder="Enter integrations or modules" {...field} />
+                                  </FormControl>
+                                  <FormDescription>
+                                    List the integrations or modules required for this task
+                                  </FormDescription>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                          </div>
+                        )}
                       </FormItem>
                     )}
                   />
@@ -289,25 +444,74 @@ const NewRequest: React.FC = () => {
                       </FormItem>
                     )}
                   />
-                  
-                  {/* Integrations */}
+                </div>
+                
+                {/* Documentation Paths */}
+                <div className="space-y-3">
                   <FormField
                     control={form.control}
-                    name="integrations"
+                    name="documentation"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Integrations/Modules</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Enter integrations or modules" {...field} />
-                        </FormControl>
+                        <FormLabel>Path(s) to Documentation</FormLabel>
+                        <div className="flex space-x-2">
+                          <FormControl>
+                            <Input 
+                              placeholder="Enter path to documentation" 
+                              value={newPath}
+                              onChange={(e) => setNewPath(e.target.value)}
+                              className="flex-1"
+                              id="documentationPaths"
+                            />
+                          </FormControl>
+                          <Button 
+                            type="button" 
+                            variant="outline" 
+                            onClick={handleSelectFile}
+                          >
+                            Browse
+                          </Button>
+                          <Button 
+                            type="button" 
+                            onClick={handleAddDocumentationPath}
+                            disabled={!newPath.trim()}
+                          >
+                            Add
+                          </Button>
+                        </div>
                         <FormDescription>
-                          Optional - list any integrations or additional modules
+                          Add paths to relevant documentation for this request
                         </FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
                   
+                  {documentationPaths.length > 0 && (
+                    <div className="bg-muted/20 rounded-md p-3 space-y-2">
+                      <p className="text-sm font-medium">Added Documentation:</p>
+                      <ul className="space-y-2">
+                        {documentationPaths.map((path, index) => (
+                          <li key={index} className="flex justify-between items-center text-sm bg-background p-2 rounded">
+                            <span className="truncate flex-1">{path}</span>
+                            <Button 
+                              type="button" 
+                              variant="ghost" 
+                              size="sm" 
+                              onClick={() => handleRemoveDocumentationPath(index)}
+                              className="h-7 w-7 p-0"
+                            >
+                              ✕
+                            </Button>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+                
+                {/* Date and Hours */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   {/* Start Date */}
                   <FormField
                     control={form.control}
@@ -321,7 +525,7 @@ const NewRequest: React.FC = () => {
                               <Button
                                 variant={"outline"}
                                 className={cn(
-                                  "pl-3 text-left font-normal",
+                                  "w-full pl-3 text-left font-normal",
                                   !field.value && "text-muted-foreground"
                                 )}
                               >
@@ -371,7 +575,7 @@ const NewRequest: React.FC = () => {
                               <Button
                                 variant={"outline"}
                                 className={cn(
-                                  "pl-3 text-left font-normal",
+                                  "w-full pl-3 text-left font-normal",
                                   !field.value && "text-muted-foreground"
                                 )}
                               >
@@ -405,7 +609,7 @@ const NewRequest: React.FC = () => {
                     control={form.control}
                     name="scopedHours"
                     render={({ field }) => (
-                      <FormItem>
+                      <FormItem className="flex flex-col justify-start">
                         <FormLabel>Scoped Hours</FormLabel>
                         <FormControl>
                           <Input 
@@ -413,6 +617,7 @@ const NewRequest: React.FC = () => {
                             min="1"
                             placeholder="Enter estimated hours" 
                             {...field} 
+                            className="h-10"
                           />
                         </FormControl>
                         <FormMessage />
@@ -464,7 +669,14 @@ const NewRequest: React.FC = () => {
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              {requestors.map(requestor => (
+                              <SelectItem key="new" value="new">
+                                + New Requestor
+                              </SelectItem>
+                              {requestors
+                                .filter((requestor, index, self) => 
+                                  self.findIndex(r => r.name === requestor.name) === index
+                                )
+                                .map(requestor => (
                                 <SelectItem key={requestor.id} value={requestor.id}>
                                   {requestor.name}
                                 </SelectItem>
@@ -489,7 +701,11 @@ const NewRequest: React.FC = () => {
                           <FormItem>
                             <FormLabel>Requestor Name</FormLabel>
                             <FormControl>
-                              <Input placeholder="Name will appear here" {...field} readOnly />
+                              <Input 
+                                placeholder={isNewRequestor ? "Enter requestor name" : "Name will appear here"} 
+                                {...field} 
+                                readOnly={!isNewRequestor}
+                              />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -505,9 +721,9 @@ const NewRequest: React.FC = () => {
                             <FormControl>
                               <Input 
                                 type="email"
-                                placeholder="Email will appear here" 
+                                placeholder={isNewRequestor ? "Enter requestor email" : "Email will appear here"}
                                 {...field} 
-                                readOnly
+                                readOnly={!isNewRequestor}
                               />
                             </FormControl>
                             <FormMessage />

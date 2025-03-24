@@ -102,6 +102,32 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     try {
       const fetchedTasks = await smartsheetApi.getTasks();
       setTasks(fetchedTasks);
+      
+      // Extract unique requestors from tasks
+      const uniqueRequestors = new Map();
+      
+      // Add initial requestors
+      requestors.forEach(r => {
+        if (r.name && r.email) {
+          uniqueRequestors.set(r.id, r);
+        }
+      });
+      
+      // Add requestors from tasks
+      fetchedTasks.forEach(task => {
+        if (task.requestor && task.requestorEmail && task.requestorId) {
+          if (!uniqueRequestors.has(task.requestorId)) {
+            uniqueRequestors.set(task.requestorId, {
+              id: task.requestorId,
+              name: task.requestor,
+              email: task.requestorEmail
+            });
+          }
+        }
+      });
+      
+      // Update requestors state with unique list
+      setRequestors(Array.from(uniqueRequestors.values()));
     } catch (err) {
       console.error('Error fetching tasks:', err);
       setError('Failed to fetch tasks. Please try again.');

@@ -1,8 +1,8 @@
-
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
+import { useAppContext } from '@/context/AppContext';
 import {
   Home,
   PlusCircle,
@@ -17,9 +17,10 @@ interface SidebarItemProps {
   label: string;
   to: string;
   active: boolean;
+  badge?: number;
 }
 
-const SidebarItem: React.FC<SidebarItemProps> = ({ icon, label, to, active }) => (
+const SidebarItem: React.FC<SidebarItemProps> = ({ icon, label, to, active, badge }) => (
   <Link to={to} className="w-full">
     <motion.div
       className={cn(
@@ -33,7 +34,12 @@ const SidebarItem: React.FC<SidebarItemProps> = ({ icon, label, to, active }) =>
     >
       {icon}
       <span>{label}</span>
-      {active && (
+      {badge !== undefined && badge > 0 && (
+        <span className="ml-auto bg-red-500 text-white text-xs font-medium px-2 py-0.5 rounded-full">
+          {badge}
+        </span>
+      )}
+      {active && !badge && (
         <motion.div
           className="w-1 h-6 bg-white rounded-full ml-auto"
           layoutId="activeIndicator"
@@ -45,11 +51,21 @@ const SidebarItem: React.FC<SidebarItemProps> = ({ icon, label, to, active }) =>
 
 const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const location = useLocation();
+  const { tasks } = useAppContext();
+  const [unallocatedCount, setUnallocatedCount] = useState(0);
+  
+  // Calculate unallocated tasks count
+  useEffect(() => {
+    if (tasks) {
+      const count = tasks.filter(task => task.status === 'Pending Allocation').length;
+      setUnallocatedCount(count);
+    }
+  }, [tasks]);
   
   const navItems = [
     { icon: <Home size={20} />, label: 'Dashboard', to: '/' },
     { icon: <PlusCircle size={20} />, label: 'New Request', to: '/new-request' },
-    { icon: <Layers size={20} />, label: 'Allocate Tasks', to: '/allocate' },
+    { icon: <Layers size={20} />, label: 'Allocate Tasks', to: '/allocate', badge: unallocatedCount },
     { icon: <BarChart size={20} />, label: 'Reports', to: '/reports' },
     { icon: <Settings size={20} />, label: 'Settings', to: '/settings' }
   ];
@@ -93,6 +109,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                   label={item.label}
                   to={item.to}
                   active={location.pathname === item.to}
+                  badge={item.badge}
                 />
               </motion.div>
             ))}

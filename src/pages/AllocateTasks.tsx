@@ -1,8 +1,8 @@
-
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAppContext } from '@/context/AppContext';
 import { TaskData } from '@/services/smartsheetApi';
+import { useLocation } from 'react-router-dom';
 import {
   Card,
   CardContent,
@@ -33,6 +33,7 @@ import { Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 
 const AllocateTasks: React.FC = () => {
+  const location = useLocation();
   const { tasks, teamMembers, loading, error, allocateTask } = useAppContext();
   const [pendingTasks, setPendingTasks] = useState<TaskData[]>([]);
   const [selectedTask, setSelectedTask] = useState<TaskData | null>(null);
@@ -40,6 +41,20 @@ const AllocateTasks: React.FC = () => {
   const [leadBuilder, setLeadBuilder] = useState<string>('');
   const [selectedTeam, setSelectedTeam] = useState<string[]>([]);
   const [isAllocating, setIsAllocating] = useState(false);
+  
+  // Get taskId from URL if present
+  useEffect(() => {
+    const queryParams = new URLSearchParams(location.search);
+    const taskId = queryParams.get('taskId');
+    
+    if (taskId && tasks.length > 0) {
+      const task = tasks.find(t => t.id === taskId);
+      if (task) {
+        setSelectedTask(task);
+        setDialogOpen(true);
+      }
+    }
+  }, [location.search, tasks]);
   
   // Filter pending tasks when tasks change
   useEffect(() => {
@@ -196,7 +211,16 @@ const AllocateTasks: React.FC = () => {
                       <p className="text-xs text-muted-foreground">
                         Requested by: {task.requestor}
                       </p>
-                      <Button size="sm" variant="outline">Allocate</Button>
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleTaskSelect(task);
+                        }}
+                      >
+                        Allocate
+                      </Button>
                     </div>
                   </CardFooter>
                 </Card>

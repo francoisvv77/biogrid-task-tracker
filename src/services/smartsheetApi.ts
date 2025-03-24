@@ -9,6 +9,7 @@ const API_URL = "/api/smartsheet";
 export const COLUMNS = {
   TASK_ID: 1542486025785220,
   TASK_TYPE: 3794285839470468 ,
+  TASK_SUB_TYPE: 1101306951585668,
   SPONSOR: 292473375248260,
   PROJECT_NAME: 6046085653155716,
   EDC_SYSTEM: 979536072363908,
@@ -23,17 +24,20 @@ export const COLUMNS = {
   REQUESTOR: 4796073002618756,
   REQUESTOR_EMAIL: 2544273188933508,
   REQUESTOR_ID: 7047872816304004,
-  PRIORITY: 4486824754106244
+  PRIORITY: 4486824754106244,
+  DOCUMENTATION: 6797118633365380
 };
 
 // Interface for task data
 export interface TaskData {
   id?: string;
   taskType: string;
+  taskSubType?: string;
   sponsor: string;
   projectName: string;
   edcSystem: string;
   integrations: string;
+  documentation?: string;
   description: string;
   startDate: string;
   endDate: string;
@@ -55,23 +59,36 @@ export const generateUniqueId = (): string => {
 
 // Function to convert a task to Smartsheet row format
 const taskToRow = (task: TaskData, rowId?: number) => {
+  // Ensure team is an array before trying to join it
+  let teamValue = "";
+  if (task.team) {
+    if (Array.isArray(task.team)) {
+      teamValue = task.team.join(", ");
+    } else {
+      console.warn("Task team is not an array:", task.team);
+      teamValue = String(task.team);
+    }
+  }
+
   return {
     id: rowId, // Include row ID if available (required for updates)
     cells: [
       { columnId: COLUMNS.TASK_ID, value: task.id || generateUniqueId() },
       { columnId: COLUMNS.TASK_TYPE, value: task.taskType },
+      { columnId: COLUMNS.TASK_SUB_TYPE, value: task.taskSubType || "" },
       { columnId: COLUMNS.SPONSOR, value: task.sponsor },
       { columnId: COLUMNS.PROJECT_NAME, value: task.projectName },
       { columnId: COLUMNS.EDC_SYSTEM, value: task.edcSystem },
       { columnId: COLUMNS.INTEGRATIONS, value: task.integrations },
       { columnId: COLUMNS.DESCRIPTION, value: task.description },
+      { columnId: COLUMNS.DOCUMENTATION, value: task.documentation || "" },
       { columnId: COLUMNS.START_DATE, value: task.startDate },
       { columnId: COLUMNS.END_DATE, value: task.endDate },
       { columnId: COLUMNS.SCOPED_HOURS, value: task.scopedHours.toString() },
       { columnId: COLUMNS.PRIORITY, value: task.priority || "Medium" },
       { columnId: COLUMNS.STATUS, value: task.status || "Pending Allocation" },
       { columnId: COLUMNS.ALLOCATED, value: task.allocated || "" },
-      { columnId: COLUMNS.TEAM, value: task.team ? task.team.join(", ") : "" },
+      { columnId: COLUMNS.TEAM, value: teamValue },
       { columnId: COLUMNS.REQUESTOR, value: task.requestor || "" },
       { columnId: COLUMNS.REQUESTOR_EMAIL, value: task.requestorEmail || "" },
       { columnId: COLUMNS.REQUESTOR_ID, value: task.requestorId || generateUniqueId() }
@@ -90,10 +107,12 @@ export const rowToTask = (row: any): TaskData => {
   return {
     id: getCellValue(COLUMNS.TASK_ID),
     taskType: getCellValue(COLUMNS.TASK_TYPE),
+    taskSubType: getCellValue(COLUMNS.TASK_SUB_TYPE),
     sponsor: getCellValue(COLUMNS.SPONSOR),
     projectName: getCellValue(COLUMNS.PROJECT_NAME),
     edcSystem: getCellValue(COLUMNS.EDC_SYSTEM),
     integrations: getCellValue(COLUMNS.INTEGRATIONS),
+    documentation: getCellValue(COLUMNS.DOCUMENTATION),
     description: getCellValue(COLUMNS.DESCRIPTION),
     startDate: getCellValue(COLUMNS.START_DATE),
     endDate: getCellValue(COLUMNS.END_DATE),
@@ -186,11 +205,31 @@ export const smartsheetApi = {
       const existingTask = allTasks.find(t => t.id === task.id);
       
       if (!existingTask) {
+        console.error("Task not found:", task.id);
         throw new Error("Task not found");
       }
       
+      // Deep copy the task to avoid reference issues
+      const taskToUpdate = { ...task };
+      
+      // Ensure team is properly formatted
+      if (taskToUpdate.team === undefined) {
+        console.log("Team is undefined, initializing as empty array");
+        taskToUpdate.team = [];
+      } else if (!Array.isArray(taskToUpdate.team)) {
+        console.error("Team is not an array, fixing:", taskToUpdate.team);
+        // Try to convert to array if it's a string
+        if (typeof taskToUpdate.team === 'string' && (taskToUpdate.team as string).includes(',')) {
+          taskToUpdate.team = (taskToUpdate.team as string).split(',').map(item => item.trim());
+        } else {
+          taskToUpdate.team = [];
+        }
+      }
+      
       // Use the rowId from the existing task
-      const row = taskToRow(task, existingTask.rowId);
+      const row = taskToRow(taskToUpdate, existingTask.rowId);
+      
+      console.log("Updating task with data:", JSON.stringify(taskToUpdate, null, 2));
       
       const response = await fetch(`${API_URL}/sheets/${SHEET_ID}/rows`, {
         method: "PUT",
@@ -202,12 +241,13 @@ export const smartsheetApi = {
       });
       
       if (!response.ok) {
-        console.error("Error response:", await response.text());
+        const errorText = await response.text();
+        console.error("Error response:", errorText);
         throw new Error("Failed to update task");
       }
       
       toast.success("Task updated successfully");
-      return task;
+      return taskToUpdate;
     } catch (error) {
       console.error("Error updating task:", error);
       toast.error("Failed to update task. Please try again.");

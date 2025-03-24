@@ -272,17 +272,17 @@ const Dashboard: React.FC = () => {
         ) : filteredTasks.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">No tasks found matching the current filters</div>
         ) : (
-          <div className="grid gap-4 grid-cols-1">
+          <div className="grid gap-3 grid-cols-1">
             {filteredTasks.map(task => (
               <Card key={task.id} className="overflow-hidden hover:shadow-md transition-shadow cursor-pointer" onClick={() => handleTaskClick(task)}>
-                <CardHeader className="pb-2">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <CardTitle className="text-base">{task.projectName}</CardTitle>
-                      <CardDescription>{task.sponsor} • {task.edcSystem}</CardDescription>
+                <div className="p-4">
+                  <div className="flex flex-wrap justify-between items-center mb-2">
+                    <div className="flex-1 min-w-0 mr-2">
+                      <h3 className="text-sm font-medium truncate">{task.projectName}</h3>
+                      <p className="text-xs text-muted-foreground truncate">{task.sponsor} • {task.edcSystem}</p>
                     </div>
-                    <div className="flex gap-2">
-                      <div className={`px-2 py-1 rounded-full text-xs font-medium
+                    <div className="flex flex-wrap gap-1 items-center">
+                      <div className={`px-1.5 py-0.5 rounded-full text-xs font-medium
                         ${task.priority === 'Low' ? 'bg-blue-100 text-blue-700' : ''}
                         ${task.priority === 'Medium' ? 'bg-green-100 text-green-700' : ''}
                         ${task.priority === 'High' ? 'bg-orange-100 text-orange-700' : ''}
@@ -290,7 +290,7 @@ const Dashboard: React.FC = () => {
                       `}>
                         {task.priority || 'Medium'}
                       </div>
-                      <div className={`px-2 py-1 rounded-full text-xs font-medium
+                      <div className={`px-1.5 py-0.5 rounded-full text-xs font-medium
                         ${task.status === 'Pending Allocation' ? 'bg-orange-100 text-orange-700' : ''}
                         ${task.status === 'Assigned' ? 'bg-blue-100 text-blue-700' : ''}
                         ${task.status === 'In Progress' ? 'bg-purple-100 text-purple-700' : ''}
@@ -301,44 +301,48 @@ const Dashboard: React.FC = () => {
                       `}>
                         {task.status}
                       </div>
+                      {task.status === 'Pending Allocation' && (
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          className="h-6 text-xs"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(`/allocate?taskId=${task.id}`);
+                          }}
+                        >
+                          Allocate
+                        </Button>
+                      )}
                     </div>
                   </div>
-                </CardHeader>
-                <CardContent className="pb-2">
-                  <p className="text-sm mb-2 line-clamp-2">{task.description}</p>
-                  <div className="grid grid-cols-2 gap-4 text-sm">
+                  
+                  <div className="grid grid-cols-4 gap-2 text-xs">
                     <div>
-                      <p className="text-muted-foreground">Start Date</p>
+                      <p className="text-muted-foreground">Start</p>
                       <p>{task.startDate}</p>
                     </div>
                     <div>
-                      <p className="text-muted-foreground">End Date</p>
+                      <p className="text-muted-foreground">End</p>
                       <p>{task.endDate}</p>
                     </div>
                     <div>
-                      <p className="text-muted-foreground">Lead Builder</p>
-                      <p>{task.allocated || 'Not assigned'}</p>
+                      <p className="text-muted-foreground">Lead</p>
+                      <p className="truncate">{task.allocated || '-'}</p>
                     </div>
                     <div>
-                      <p className="text-muted-foreground">Scoped Hours</p>
+                      <p className="text-muted-foreground">Hours</p>
                       <p>{task.scopedHours}</p>
                     </div>
                   </div>
-                </CardContent>
-                {task.status === 'Pending Allocation' && (
-                  <CardFooter className="flex justify-end pt-0">
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        navigate(`/allocate-tasks?taskId=${task.id}`);
-                      }}
-                    >
-                      Allocate
-                    </Button>
-                  </CardFooter>
-                )}
+                  
+                  {task.taskSubType && (
+                    <div className="mt-1.5">
+                      <p className="text-xs text-muted-foreground inline-block mr-1">Sub-Type:</p>
+                      <p className="text-xs inline-block">{task.taskSubType}</p>
+                    </div>
+                  )}
+                </div>
               </Card>
             ))}
           </div>
