@@ -183,17 +183,19 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
           <Label htmlFor="taskType">Task Type</Label>
           {isEditMode ? (
             <Select 
-              value={taskData.taskType} 
+              value={taskData.taskType || ''} 
               onValueChange={(value) => handleInputChange('taskType', value)}
             >
               <SelectTrigger id="taskType">
                 <SelectValue placeholder="Select task type" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="New Build">New Build</SelectItem>
-                <SelectItem value="Amendment">Amendment</SelectItem>
-                <SelectItem value="Integration">Integration</SelectItem>
-                <SelectItem value="RTSM Setup">RTSM Setup</SelectItem>
+                <SelectItem value="BioGRID Initial Build">BioGRID Initial Build</SelectItem>
+                <SelectItem value="BioGRID Amendment">BioGRID Amendment</SelectItem>
+                <SelectItem value="BioGRID DM Build">BioGRID DM Build</SelectItem>
+                <SelectItem value="BioGRID DM Amendment">BioGRID DM Amendment</SelectItem>
+                <SelectItem value="BioGRID ATR Build">BioGRID ATR Build</SelectItem>
+                <SelectItem value="BioGRID ATR Amendment">BioGRID ATR Amendment</SelectItem>
               </SelectContent>
             </Select>
           ) : (
@@ -211,14 +213,12 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                 <SelectValue placeholder="Select task sub-type" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="New Full Database Build">New Full Database Build</SelectItem>
-                <SelectItem value="CRF/Form Updates">CRF/Form Updates</SelectItem>
-                <SelectItem value="Edit Check Updates">Edit Check Updates</SelectItem>
-                <SelectItem value="Custom Function Updates">Custom Function Updates</SelectItem>
-                <SelectItem value="Visit Schedule Updates">Visit Schedule Updates</SelectItem>
-                <SelectItem value="New External Data Integration">New External Data Integration</SelectItem>
-                <SelectItem value="Migration of Existing Data">Migration of Existing Data</SelectItem>
-                <SelectItem value="RTSM Setup">RTSM Setup</SelectItem>
+                <SelectItem value="Status Dashboards">Status Dashboards</SelectItem>
+                <SelectItem value="Customized Dashboards ( incl. STD)">Customized Dashboards ( incl. STD)</SelectItem>
+                <SelectItem value="Patient Profiles">Patient Profiles</SelectItem>
+                <SelectItem value="ATR Dashboards">ATR Dashboards</SelectItem>
+                <SelectItem value="Recon Dashboards">Recon Dashboards</SelectItem>
+                <SelectItem value="Amend dashboards">Amend dashboards</SelectItem>
               </SelectContent>
             </Select>
           ) : (
