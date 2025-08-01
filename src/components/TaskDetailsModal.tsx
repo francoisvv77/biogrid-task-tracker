@@ -154,7 +154,7 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
   // Render the details tab content
   const renderDetailsTab = () => (
     <div className="space-y-4">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         <div>
           <Label htmlFor="projectName">Project Name</Label>
           {isEditMode ? (
@@ -305,7 +305,46 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
           )}
         </div>
         <div>
-          <Label htmlFor="scopedHours">Scoped Hours</Label>
+          <Label htmlFor="amendmentNr">Amendment Number</Label>
+          {isEditMode ? (
+            <Input 
+              id="amendmentNr" 
+              value={taskData.amendmentNr || ''} 
+              onChange={(e) => handleInputChange('amendmentNr', e.target.value)}
+              placeholder="e.g., Amendment 1"
+            />
+          ) : (
+            <div className="p-2 border rounded-md bg-muted/20">{taskData.amendmentNr || 'Not specified'}</div>
+          )}
+        </div>
+        <div>
+          <Label htmlFor="projectId">Project ID</Label>
+          {isEditMode ? (
+            <Input 
+              id="projectId" 
+              value={taskData.projectId || ''} 
+              onChange={(e) => handleInputChange('projectId', e.target.value)}
+              placeholder="Enter project ID"
+            />
+          ) : (
+            <div className="p-2 border rounded-md bg-muted/20">{taskData.projectId || 'Not specified'}</div>
+          )}
+        </div>
+        <div>
+          <Label htmlFor="externalData">External Data</Label>
+          {isEditMode ? (
+            <Input 
+              id="externalData" 
+              value={taskData.externalData || ''} 
+              onChange={(e) => handleInputChange('externalData', e.target.value)}
+              placeholder="External data requirements"
+            />
+          ) : (
+            <div className="p-2 border rounded-md bg-muted/20">{taskData.externalData || 'None'}</div>
+          )}
+        </div>
+        <div>
+          <Label htmlFor="scopedHours">Programming Scoped Hours</Label>
           {isEditMode ? (
             <Input 
               id="scopedHours" 
@@ -316,6 +355,20 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
             />
           ) : (
             <div className="p-2 border rounded-md bg-muted/20">{taskData.scopedHours}</div>
+          )}
+        </div>
+        <div>
+          <Label htmlFor="cdsHours">CDS Scoped Hours</Label>
+          {isEditMode ? (
+            <Input 
+              id="cdsHours" 
+              type="number" 
+              min="0"
+              value={taskData.cdsHours || 0} 
+              onChange={(e) => handleInputChange('cdsHours', parseInt(e.target.value) || 0)}
+            />
+          ) : (
+            <div className="p-2 border rounded-md bg-muted/20">{taskData.cdsHours || 0}</div>
           )}
         </div>
         <div>
@@ -428,6 +481,39 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
         ) : (
           <div className="p-2 border rounded-md bg-muted/20">
             {taskData.leadCDS || 'Not assigned'}
+          </div>
+        )}
+      </div>
+
+      <div>
+        <Label htmlFor="requestor">Requestor Name</Label>
+        {isEditMode ? (
+          <Input 
+            id="requestor" 
+            value={taskData.requestor || ''} 
+            onChange={(e) => handleInputChange('requestor', e.target.value)}
+            placeholder="Enter requestor name"
+          />
+        ) : (
+          <div className="p-2 border rounded-md bg-muted/20">
+            {taskData.requestor || 'Not specified'}
+          </div>
+        )}
+      </div>
+
+      <div>
+        <Label htmlFor="requestorEmail">Requestor Email</Label>
+        {isEditMode ? (
+          <Input 
+            id="requestorEmail" 
+            type="email"
+            value={taskData.requestorEmail || ''} 
+            onChange={(e) => handleInputChange('requestorEmail', e.target.value)}
+            placeholder="Enter requestor email"
+          />
+        ) : (
+          <div className="p-2 border rounded-md bg-muted/20">
+            {taskData.requestorEmail || 'Not specified'}
           </div>
         )}
       </div>
