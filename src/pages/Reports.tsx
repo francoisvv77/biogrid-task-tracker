@@ -40,9 +40,9 @@ import {
   PieChart as PieChartIcon, 
   CalendarDays, 
   Activity,
-  FileBarChart,
-  Download 
+  Download,
 } from 'lucide-react';
+
 
 // Reports page component
 const Reports: React.FC = () => {
@@ -66,7 +66,9 @@ const Reports: React.FC = () => {
   ];
   
   // Calculate resource allocation
-  const builders = teamMembers.filter(member => member.role === 'Builder');
+  const builders = teamMembers.filter(member => 
+    member.role === 'BioGRID Designer' || member.role === 'CDS'
+  );
   const resourceAllocation = builders.map(builder => {
     // Get tasks where the builder is the lead
     const leadTasks = tasks.filter(task => task.allocated === builder.name);
@@ -201,7 +203,7 @@ const Reports: React.FC = () => {
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <FileBarChart className="h-5 w-5" />
+                    <BarChart3 className="h-5 w-5" />
                     <span>Hours Allocated</span>
                   </CardTitle>
                   <CardDescription>
@@ -445,6 +447,8 @@ const Reports: React.FC = () => {
               </Card>
             </div>
           </TabsContent>
+          
+
         </div>
       </Tabs>
     </div>

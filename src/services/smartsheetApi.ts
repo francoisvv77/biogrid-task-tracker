@@ -1,53 +1,68 @@
 import { toast } from "sonner";
 
 const SMARTSHEET_API_KEY = "mcQHLLu8W9A0uUtAmgYaFsQE8yH1QWKUYNcoq";
-const SHEET_ID = "Xm5q7pjVVRWXrHPRg73Qv79Xh96CgCVGvXcg4hm1";
+const SHEET_ID = "4968623136264068";
 // Use proxy URL instead of direct API URL to avoid CORS issues
 const API_URL = "/api/smartsheet";
 
 // Column IDs for all fields
 export const COLUMNS = {
-  TASK_ID: 1542486025785220,
-  TASK_TYPE: 3794285839470468 ,
-  TASK_SUB_TYPE: 1101306951585668,
-  SPONSOR: 292473375248260,
-  PROJECT_NAME: 6046085653155716,
-  EDC_SYSTEM: 979536072363908,
-  INTEGRATIONS: 5483135699734404,
-  DESCRIPTION: 8297885466840964,
-  START_DATE: 7329347793014660,
-  END_DATE: 1699848258801540,
-  SCOPED_HOURS: 6203447886172036,
-  STATUS: 4675173699768196,
-  ALLOCATED: 3951648072486788,
-  TEAM: 8455247699857284,
-  REQUESTOR: 4796073002618756,
-  REQUESTOR_EMAIL: 2544273188933508,
-  REQUESTOR_ID: 7047872816304004,
-  PRIORITY: 4486824754106244,
-  DOCUMENTATION: 6797118633365380
+  TASK_ID: 1219205212622724,
+  TASK_TYPE: 7974604653678468,
+  AMENDMENT_NR: 5481524006440836,
+  TASK_SUB_TYPE: 656255259201412,
+  PROJECT_ID: 4358673526378372,
+  SPONSOR: 5722804839993220,
+  PROJECT_NAME: 3471005026307972,
+  PRIORITY: 5159854886571908,
+  EDC_SYSTEM: 1782155166044036,
+  EXTERNAL_DATA: 6285754793414532,
+  DOCUMENTATION: 7411654700257156,
+  START_DATE: 4033954979729284,
+  END_DATE: 8537554607099780,
+  PROGRAMMING_SCOPED_HOURS: 5128291400503172,
+  CDS_SCOPED_HOURS: 374780282490756,
+  DESCRIPTION: 2908055072886660,
+  REQUESTOR: 1500680189333380,
+  REQUESTOR_EMAIL: 6004279816703876,
+  LEAD_BUILDER: 4878379909861252,
+  LEAD_CDS: 2876491586817924,
+  TEAM: 7130179723546500,
+  STATUS: 2626580096176004,
+  // Metrics sheet columns
+  METRICS_TASK_ID: 1219205212622724,
+  METRICS_SPONSOR: 5722804839993220,
+  UNITS: 4784697546854276,
+  ERRORS: 2532897733169028,
 };
 
 // Interface for task data
 export interface TaskData {
   id?: string;
   taskType: string;
+  amendmentNr?: string;
   taskSubType?: string;
+  projectId?: string;
   sponsor: string;
   projectName: string;
+  priority?: string;
   edcSystem: string;
-  integrations: string;
+  externalData?: string;
   documentation?: string;
-  description: string;
   startDate: string;
   endDate: string;
-  scopedHours: number;
-  priority?: string;
+  scopedHours: number; // This will map to Programming Scoped Hours
+  cdsHours?: number;   // New CDS Scoped Hours field
+  description: string;
+  requestor?: string;
+  requestorEmail?: string;
+  leadBuilder?: string;
+  leadCDS?: string;
+  // Legacy fields for compatibility
+  integrations?: string;
   status?: string;
   allocated?: string;
   team?: string[];
-  requestor?: string;
-  requestorEmail?: string;
   requestorId?: string;
   rowId?: number; // Smartsheet row ID needed for updates
 }
@@ -84,23 +99,26 @@ const taskToRow = (task: TaskData, rowId?: number) => {
     cells: [
       { columnId: COLUMNS.TASK_ID, value: task.id || generateUniqueId() },
       { columnId: COLUMNS.TASK_TYPE, value: task.taskType },
+      { columnId: COLUMNS.AMENDMENT_NR, value: task.amendmentNr || "" },
       { columnId: COLUMNS.TASK_SUB_TYPE, value: task.taskSubType || "" },
+      { columnId: COLUMNS.PROJECT_ID, value: task.projectId || "" },
       { columnId: COLUMNS.SPONSOR, value: task.sponsor },
       { columnId: COLUMNS.PROJECT_NAME, value: task.projectName },
+      { columnId: COLUMNS.PRIORITY, value: task.priority || "Medium" },
       { columnId: COLUMNS.EDC_SYSTEM, value: task.edcSystem },
-      { columnId: COLUMNS.INTEGRATIONS, value: task.integrations },
-      { columnId: COLUMNS.DESCRIPTION, value: task.description },
+      { columnId: COLUMNS.EXTERNAL_DATA, value: task.externalData || "" },
       { columnId: COLUMNS.DOCUMENTATION, value: task.documentation || "" },
       { columnId: COLUMNS.START_DATE, value: task.startDate },
       { columnId: COLUMNS.END_DATE, value: task.endDate },
-      { columnId: COLUMNS.SCOPED_HOURS, value: task.scopedHours.toString() },
-      { columnId: COLUMNS.PRIORITY, value: task.priority || "Medium" },
-      { columnId: COLUMNS.STATUS, value: task.status || "Pending Allocation" },
-      { columnId: COLUMNS.ALLOCATED, value: task.allocated || "" },
-      { columnId: COLUMNS.TEAM, value: teamValue },
+      { columnId: COLUMNS.PROGRAMMING_SCOPED_HOURS, value: task.scopedHours.toString() },
+      { columnId: COLUMNS.CDS_SCOPED_HOURS, value: (task.cdsHours || 0).toString() },
+      { columnId: COLUMNS.DESCRIPTION, value: task.description },
       { columnId: COLUMNS.REQUESTOR, value: task.requestor || "" },
       { columnId: COLUMNS.REQUESTOR_EMAIL, value: task.requestorEmail || "" },
-      { columnId: COLUMNS.REQUESTOR_ID, value: task.requestorId || generateUniqueId() }
+      { columnId: COLUMNS.LEAD_BUILDER, value: task.leadBuilder || task.allocated || "" },
+      { columnId: COLUMNS.LEAD_CDS, value: task.leadCDS || "" },
+      { columnId: COLUMNS.TEAM, value: teamValue },
+      { columnId: COLUMNS.STATUS, value: task.status || "Pending Allocation" }
     ]
   };
 };
@@ -116,23 +134,30 @@ export const rowToTask = (row: any): TaskData => {
   return {
     id: getCellValue(COLUMNS.TASK_ID),
     taskType: getCellValue(COLUMNS.TASK_TYPE),
+    amendmentNr: getCellValue(COLUMNS.AMENDMENT_NR),
     taskSubType: getCellValue(COLUMNS.TASK_SUB_TYPE),
+    projectId: getCellValue(COLUMNS.PROJECT_ID),
     sponsor: getCellValue(COLUMNS.SPONSOR),
     projectName: getCellValue(COLUMNS.PROJECT_NAME),
+    priority: getCellValue(COLUMNS.PRIORITY),
     edcSystem: getCellValue(COLUMNS.EDC_SYSTEM),
-    integrations: getCellValue(COLUMNS.INTEGRATIONS),
+    externalData: getCellValue(COLUMNS.EXTERNAL_DATA),
     documentation: getCellValue(COLUMNS.DOCUMENTATION),
-    description: getCellValue(COLUMNS.DESCRIPTION),
     startDate: getCellValue(COLUMNS.START_DATE),
     endDate: getCellValue(COLUMNS.END_DATE),
-    scopedHours: parseInt(getCellValue(COLUMNS.SCOPED_HOURS)) || 0,
-    priority: getCellValue(COLUMNS.PRIORITY),
-    status: getCellValue(COLUMNS.STATUS),
-    allocated: getCellValue(COLUMNS.ALLOCATED),
-    team: getCellValue(COLUMNS.TEAM) ? getCellValue(COLUMNS.TEAM).split(", ") : [],
+    scopedHours: parseInt(getCellValue(COLUMNS.PROGRAMMING_SCOPED_HOURS)) || 0,
+    cdsHours: parseInt(getCellValue(COLUMNS.CDS_SCOPED_HOURS)) || 0,
+    description: getCellValue(COLUMNS.DESCRIPTION),
     requestor: getCellValue(COLUMNS.REQUESTOR),
     requestorEmail: getCellValue(COLUMNS.REQUESTOR_EMAIL),
-    requestorId: getCellValue(COLUMNS.REQUESTOR_ID),
+    leadBuilder: getCellValue(COLUMNS.LEAD_BUILDER),
+    leadCDS: getCellValue(COLUMNS.LEAD_CDS),
+    // Legacy fields with default values for compatibility
+    integrations: "",
+    status: getCellValue(COLUMNS.STATUS) || "Pending Allocation",
+    allocated: getCellValue(COLUMNS.LEAD_BUILDER), // Map lead builder to allocated for backwards compatibility
+    team: getCellValue(COLUMNS.TEAM) ? getCellValue(COLUMNS.TEAM).split(", ") : [],
+    requestorId: getCellValue(COLUMNS.TASK_ID), // Use task ID as requestor ID
     rowId: row.id // Save the Smartsheet row ID
   };
 };
@@ -265,7 +290,7 @@ export const smartsheetApi = {
   },
   
   // Allocate a task to team members
-  allocateTask: async (taskId: string, leadBuilder: string, team: string[]): Promise<boolean> => {
+  allocateTask: async (taskId: string, leadBuilder: string, leadCDS: string, team: string[]): Promise<boolean> => {
     try {
       // Find the task first
       const allTasks = await smartsheetApi.getTasks();
@@ -276,7 +301,9 @@ export const smartsheetApi = {
       }
       
       // Update the task with allocation information
-      task.allocated = leadBuilder;
+      task.leadBuilder = leadBuilder;
+      task.allocated = leadBuilder; // Keep for backwards compatibility
+      task.leadCDS = leadCDS;
       task.team = team;
       task.status = "Assigned";
       
@@ -330,6 +357,51 @@ export const smartsheetApi = {
     } catch (error) {
       console.error('Error updating rows in Smartsheet:', error);
       throw error;
+    }
+  },
+
+  getMetrics: async (): Promise<SmartsheetRow[]> => {
+    try {
+      console.log('Fetching metrics from sheet:', '4968623136264068');
+      const response = await fetch(`${API_URL}/sheets/4968623136264068`, {
+        headers: {
+          'Content-Type': 'application/json'
+          // Authorization header is added by the proxy
+        }
+      });
+      
+      if (!response.ok) {
+        console.error('Failed to fetch metrics:', response.status, response.statusText);
+        throw new Error('Failed to fetch metrics');
+      }
+      
+      const data = await response.json();
+      console.log('Metrics API response:', data);
+      
+      if (!data.rows) {
+        console.warn('No rows found in metrics data');
+        return [];
+      }
+
+      // Log the column IDs we're looking for
+      console.log('Looking for column IDs:', {
+        TASK_ID: COLUMNS.TASK_ID,
+        UNITS: COLUMNS.UNITS,
+        ERRORS: COLUMNS.ERRORS
+      });
+
+      // Log the first row's cells to check structure
+      if (data.rows.length > 0) {
+        console.log('First row cells:', data.rows[0].cells.map(cell => ({
+          columnId: cell.columnId,
+          value: cell.value
+        })));
+      }
+
+      return data.rows;
+    } catch (error) {
+      console.error('Error fetching metrics:', error);
+      return [];
     }
   },
 };

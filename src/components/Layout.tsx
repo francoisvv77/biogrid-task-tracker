@@ -9,8 +9,7 @@ import {
   Users,
   Settings,
   BarChart,
-  Layers,
-  LineChart
+  Layers
 } from 'lucide-react';
 
 interface SidebarItemProps {
@@ -68,7 +67,6 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     { icon: <PlusCircle size={20} />, label: 'New Request', to: '/new-request' },
     { icon: <Layers size={20} />, label: 'Allocate Tasks', to: '/allocate', badge: unallocatedCount },
     { icon: <BarChart size={20} />, label: 'Reports', to: '/reports' },
-    { icon: <LineChart size={20} />, label: 'Metrics', to: '/metrics' },
     { icon: <Settings size={20} />, label: 'Settings', to: '/settings' }
   ];
 
@@ -91,10 +89,10 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             >
               <img 
                 src="/lovable-uploads/80c074f4-5cec-402a-be24-31718b565435.png" 
-                alt="Bioforum Logo" 
-                className="h-12 mx-auto mb-2"
+                alt="Biogrid Logo" 
+                className="h-16 mx-auto mb-2"
               />
-              <p className="text-sm text-gray-600 mt-1 font-medium">Build Management Tracker</p>
+              <p className="text-sm text-gray-600 mt-1 font-medium">BioGRID Task Tracker</p>
             </motion.div>
           </div>
           
@@ -123,8 +121,11 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                 <Users size={16} />
               </div>
               <div>
-                <p className="text-sm font-medium">Francois van Vuuren</p>
-                <p className="text-xs text-gray-500">Director</p>
+              <img 
+                src="/lovable-uploads/80c074f4-5cec-402a-be24-31718b565435_bioforum.png" 
+                alt="Biogrid Logo" 
+                className="h-16 mx-auto mb-2"
+              />
               </div>
             </div>
           </div>

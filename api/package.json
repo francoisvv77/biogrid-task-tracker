@@ -1,0 +1,16 @@
+{
+  "name": "biogrid-task-tracker-api",
+  "version": "1.0.0",
+  "description": "Azure Functions for BioGrid Task Tracker",
+  "engines": {
+    "node": "~18"
+  },
+  "scripts": {
+    "start": "func start",
+    "test": "echo \"No tests yet...\""
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "azure-functions-core-tools": "^4.x"
+  }
+}

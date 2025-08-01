@@ -31,6 +31,14 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 
 const AllocateTasks: React.FC = () => {
   const location = useLocation();
@@ -39,6 +47,7 @@ const AllocateTasks: React.FC = () => {
   const [selectedTask, setSelectedTask] = useState<TaskData | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [leadBuilder, setLeadBuilder] = useState<string>('');
+  const [leadCDS, setLeadCDS] = useState<string>('');
   const [selectedTeam, setSelectedTeam] = useState<string[]>([]);
   const [isAllocating, setIsAllocating] = useState(false);
   
@@ -67,6 +76,7 @@ const AllocateTasks: React.FC = () => {
   useEffect(() => {
     if (dialogOpen && selectedTask) {
       setLeadBuilder('');
+      setLeadCDS('');
       setSelectedTeam([]);
     }
   }, [dialogOpen, selectedTask]);
@@ -88,8 +98,8 @@ const AllocateTasks: React.FC = () => {
   
   // Handle allocation submission
   const handleAllocateSubmit = async () => {
-    if (!selectedTask || !leadBuilder) {
-      toast.error('Please select a lead builder');
+    if (!selectedTask || (!leadBuilder && !leadCDS)) {
+      toast.error('Please select at least one lead (Builder or CDS)');
       return;
     }
     
@@ -99,11 +109,16 @@ const AllocateTasks: React.FC = () => {
       const success = await allocateTask(
         selectedTask.id!,
         leadBuilder,
+        leadCDS,
         selectedTeam
       );
       
       if (success) {
-        toast.success(`Task allocated to ${leadBuilder}`);
+        const leads = [];
+        if (leadBuilder) leads.push(`Lead Builder: ${leadBuilder}`);
+        if (leadCDS) leads.push(`Lead CDS: ${leadCDS}`);
+        const leadMessage = leads.length > 0 ? leads.join(', ') : 'team';
+        toast.success(`Task allocated to ${leadMessage}`);
         setDialogOpen(false);
       }
     } catch (error) {
@@ -114,9 +129,64 @@ const AllocateTasks: React.FC = () => {
     }
   };
   
-  // Get builders only (exclude director and build manager)
-  const builders = teamMembers.filter(member => member.role === 'Builder');
-  
+  // Get team members by role
+  const biogridDesigners = teamMembers.filter(member => member.role === 'BioGRID Designer');
+  const cdsMembers = teamMembers.filter(member => member.role === 'CDS');
+  const allAssignableMembers = [...biogridDesigners, ...cdsMembers];
+
+  // Function to check if date ranges overlap
+  const dateRangesOverlap = (start1: string, end1: string, start2: string, end2: string) => {
+    const s1 = new Date(start1);
+    const e1 = new Date(end1);
+    const s2 = new Date(start2);
+    const e2 = new Date(end2);
+    return s1 <= e2 && s2 <= e1;
+  };
+
+  // Get available resources based on task dates
+  const getAvailableResources = (taskStartDate?: string, taskEndDate?: string) => {
+    if (!taskStartDate || !taskEndDate) return allAssignableMembers;
+
+    return allAssignableMembers.filter(builder => {
+      // Get all active tasks (not completed or cancelled) assigned to this builder
+      const builderTasks = tasks.filter(task => 
+        (task.allocated === builder.name || (task.team && task.team.includes(builder.name))) &&
+        !['Completed', 'Cancelled'].includes(task.status || '')
+      );
+
+      // If builder has no tasks, they are available
+      if (builderTasks.length === 0) {
+        return true;
+      }
+
+      // Check if any of the builder's tasks overlap with the new task's date range
+      const hasOverlap = builderTasks.some(task => 
+        dateRangesOverlap(
+          taskStartDate,
+          taskEndDate,
+          task.startDate || '',
+          task.endDate || ''
+        )
+      );
+
+      // Builder is available if there are no overlapping tasks
+      return !hasOverlap;
+    });
+  };
+
+  // Get available resources for the selected task
+  const availableResources = selectedTask 
+    ? getAvailableResources(selectedTask.startDate, selectedTask.endDate)
+    : allAssignableMembers;
+
+  // Get all active tasks for a resource (for display purposes)
+  const getActiveTasksForResource = (resourceName: string) => {
+    return tasks.filter(task => 
+      (task.allocated === resourceName || (task.team && task.team.includes(resourceName))) &&
+      !['Completed', 'Cancelled'].includes(task.status || '')
+    );
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -186,8 +256,18 @@ const AllocateTasks: React.FC = () => {
                           <p className="text-sm text-muted-foreground">{task.sponsor}</p>
                         </div>
                         <div>
-                          <p className="text-sm font-medium">Hours</p>
+                          <p className="text-sm font-medium">Programming Hours</p>
                           <p className="text-sm text-muted-foreground">{task.scopedHours}</p>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <p className="text-sm font-medium">CDS Hours</p>
+                          <p className="text-sm text-muted-foreground">{task.cdsHours || 0}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium">Total Hours</p>
+                          <p className="text-sm text-muted-foreground">{task.scopedHours + (task.cdsHours || 0)}</p>
                         </div>
                       </div>
                       <div className="grid grid-cols-2 gap-4">
@@ -230,13 +310,83 @@ const AllocateTasks: React.FC = () => {
         </div>
       )}
       
+      {/* Available Resources Card */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Available Resources</CardTitle>
+          <CardDescription>
+            {selectedTask 
+              ? `Team members available between ${new Date(selectedTask.startDate).toLocaleDateString()} and ${new Date(selectedTask.endDate).toLocaleDateString()}`
+              : 'All team members and their current allocations'
+            }
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="border rounded-md">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Role</TableHead>
+                  <TableHead>Current Active Tasks</TableHead>
+                  <TableHead>Availability</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {allAssignableMembers.map(resource => {
+                  const activeTasks = getActiveTasksForResource(resource.name);
+                  const isAvailable = availableResources.some(r => r.id === resource.id);
+
+                  return (
+                    <TableRow key={resource.id}>
+                      <TableCell>{resource.name}</TableCell>
+                      <TableCell>{resource.email}</TableCell>
+                      <TableCell>{resource.role}</TableCell>
+                      <TableCell>
+                        {activeTasks.length === 0 ? (
+                          <span className="text-green-600">No active tasks</span>
+                        ) : (
+                          <div className="text-sm text-muted-foreground">
+                            {activeTasks.map(task => (
+                              <div key={task.id} className="mb-1">
+                                {task.projectName} ({task.status})
+                                <br />
+                                <span className="text-xs">
+                                  {new Date(task.startDate).toLocaleDateString()} - {new Date(task.endDate).toLocaleDateString()}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {selectedTask ? (
+                          <span className={isAvailable ? "text-green-600" : "text-red-600"}>
+                            {isAvailable ? "Available" : "Not Available"}
+                          </span>
+                        ) : (
+                          <span className={activeTasks.length === 0 ? "text-green-600" : "text-yellow-600"}>
+                            {activeTasks.length === 0 ? "Fully Available" : "Partially Available"}
+                          </span>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Allocation Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
             <DialogTitle>Allocate Task</DialogTitle>
             <DialogDescription>
-              Assign a lead builder and team members to this task
+                              Assign lead roles (Builder/CDS) and team members to this task
             </DialogDescription>
           </DialogHeader>
           
@@ -258,7 +408,7 @@ const AllocateTasks: React.FC = () => {
                       <SelectValue placeholder="Select lead builder" />
                     </SelectTrigger>
                     <SelectContent>
-                      {builders.map(builder => (
+                      {biogridDesigners.map(builder => (
                         <SelectItem key={builder.id} value={builder.name}>
                           {builder.name}
                         </SelectItem>
@@ -268,10 +418,26 @@ const AllocateTasks: React.FC = () => {
                 </div>
                 
                 <div className="space-y-2">
+                  <Label htmlFor="lead-cds">Lead CDS</Label>
+                  <Select value={leadCDS} onValueChange={setLeadCDS}>
+                    <SelectTrigger id="lead-cds">
+                      <SelectValue placeholder="Select lead CDS" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {cdsMembers.map(cds => (
+                        <SelectItem key={cds.id} value={cds.name}>
+                          {cds.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="space-y-2">
                   <Label>Team Members</Label>
                   <div className="bg-muted/20 p-4 rounded-md space-y-2 max-h-[200px] overflow-y-auto">
-                    {builders
-                      .filter(builder => builder.name !== leadBuilder)
+                    {allAssignableMembers
+                      .filter(builder => builder.name !== leadBuilder && builder.name !== leadCDS)
                       .map(builder => (
                         <div key={builder.id} className="flex items-center space-x-2">
                           <Checkbox
@@ -304,7 +470,7 @@ const AllocateTasks: React.FC = () => {
             <Button
               type="button"
               onClick={handleAllocateSubmit}
-              disabled={!leadBuilder || isAllocating}
+              disabled={(!leadBuilder && !leadCDS) || isAllocating}
             >
               {isAllocating ? (
                 <>

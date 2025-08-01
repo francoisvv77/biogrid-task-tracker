@@ -46,21 +46,23 @@ import { toast } from 'sonner';
 // Form schema for new request
 const newRequestSchema = z.object({
   taskType: z.string().min(1, 'Task type is required'),
+  amendmentNr: z.string().optional(),
   taskSubType: z.string().min(1, 'Task sub-type is required'),
+  projectId: z.string().optional(),
   sponsor: z.string().min(1, 'Sponsor is required'),
   projectName: z.string().min(1, 'Study name is required'),
   priority: z.string().min(1, 'Priority is required'),
   edcSystem: z.string().min(1, 'EDC system is required'),
-  integrations: z.string().optional(),
-  documentation: z.string().optional(),
-  description: z.string().min(10, 'Description must be at least 10 characters'),
+  externalData: z.string().optional(),
   startDate: z.date({
     required_error: 'Start date is required',
   }),
   endDate: z.date({
     required_error: 'End date is required',
   }),
-  scopedHours: z.coerce.number().min(1, 'Scoped hours are required'),
+  programmingScopedHours: z.coerce.number().min(1, 'Programming scoped hours are required'),
+  cdsScopedHours: z.coerce.number().min(0, 'CDS scoped hours cannot be negative').optional(),
+  description: z.string().min(10, 'Description must be at least 10 characters'),
   requestorId: z.string().min(1, 'Requestor is required'),
   requestorName: z.string().min(1, 'Requestor name is required'),
   requestorEmail: z.string().email('Please enter a valid email address'),
@@ -68,28 +70,36 @@ const newRequestSchema = z.object({
 
 type NewRequestFormValues = z.infer<typeof newRequestSchema>;
 
+interface DocumentEntry {
+  documentType: string;
+  documentPath: string;
+}
+
 const NewRequest: React.FC = () => {
   const { addTask, edcSystems, requestors, addRequestor } = useAppContext();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isNewRequestor, setIsNewRequestor] = useState(false);
-  const [documentationPaths, setDocumentationPaths] = useState<string[]>([]);
-  const [newPath, setNewPath] = useState('');
+  const [documentEntries, setDocumentEntries] = useState<DocumentEntry[]>([
+    { documentType: '', documentPath: '' }
+  ]);
   const navigate = useNavigate();
   
   // Default form values with current date for startDate and endDate
   const defaultValues: Partial<NewRequestFormValues> = {
     taskType: '',
+    amendmentNr: '',
     taskSubType: '',
+    projectId: '',
     sponsor: '',
     projectName: '',
     priority: 'Medium',
     edcSystem: '',
-    integrations: '',
-    documentation: '',
-    description: '',
+    externalData: '',
     startDate: new Date(),
     endDate: new Date(),
-    scopedHours: 0,
+    programmingScopedHours: 0,
+    cdsScopedHours: 0,
+    description: '',
     requestorId: '',
     requestorName: '',
     requestorEmail: '',
@@ -102,51 +112,23 @@ const NewRequest: React.FC = () => {
     mode: 'onChange',
   });
   
-  // Watch for task sub-type to conditionally show fields
-  const taskSubType = form.watch('taskSubType');
-  
-  // Handle adding a new documentation path
-  const handleAddDocumentationPath = () => {
-    if (!newPath.trim()) return;
-    
-    setDocumentationPaths(prev => [...prev, newPath.trim()]);
-    setNewPath('');
-    
-    // Update the form field with all paths joined
-    const updatedPaths = [...documentationPaths, newPath.trim()].join('\n');
-    form.setValue('documentation', updatedPaths);
+  // Handle adding a new document entry
+  const handleAddDocumentEntry = () => {
+    setDocumentEntries([...documentEntries, { documentType: '', documentPath: '' }]);
   };
-  
-  // Handle removing a documentation path
-  const handleRemoveDocumentationPath = (indexToRemove: number) => {
-    setDocumentationPaths(prev => {
-      const newPaths = prev.filter((_, index) => index !== indexToRemove);
-      const updatedPathsString = newPaths.join('\n');
-      form.setValue('documentation', updatedPathsString);
-      return newPaths;
-    });
+
+  // Handle removing a document entry
+  const handleRemoveDocumentEntry = (index: number) => {
+    if (documentEntries.length > 1) {
+      setDocumentEntries(documentEntries.filter((_, i) => i !== index));
+    }
   };
-  
-  // Handle select file for documentation
-  const handleSelectFile = () => {
-    // Create a file input element for selecting files
-    const fileInput = document.createElement('input');
-    fileInput.type = 'file';
-    
-    fileInput.onchange = (e) => {
-      const target = e.target as HTMLInputElement;
-      if (target.files && target.files.length > 0) {
-        const file = target.files[0];
-        
-        // Just use the file name without simulating a path
-        setNewPath(file.name);
-      }
-      
-      // Clear the file input to prevent uploads
-      fileInput.value = '';
-    };
-    
-    fileInput.click();
+
+  // Handle updating a document entry
+  const handleUpdateDocumentEntry = (index: number, field: keyof DocumentEntry, value: string) => {
+    const updatedEntries = [...documentEntries];
+    updatedEntries[index][field] = value;
+    setDocumentEntries(updatedEntries);
   };
   
   // Handle form submission
@@ -163,7 +145,6 @@ const NewRequest: React.FC = () => {
         
         if (newRequestorResult) {
           toast.success(`Added new requestor: ${data.requestorName}`);
-          // We don't need to update the requestorId as it will be properly set below
         } else {
           toast.error('Failed to add new requestor');
           setIsSubmitting(false);
@@ -178,26 +159,30 @@ const NewRequest: React.FC = () => {
       const startDateFormatted = format(data.startDate, 'yyyy-MM-dd');
       const endDateFormatted = format(data.endDate, 'yyyy-MM-dd');
       
-      // Ensure documentation paths are joined
-      const documentationString = documentationPaths.length > 0 
-        ? documentationPaths.join('\n') 
-        : data.documentation || '';
+      // Create concatenated documentation string from all document entries
+      const documentation = documentEntries
+        .filter(entry => entry.documentType && entry.documentPath)
+        .map(entry => `${entry.documentType}:${entry.documentPath}`)
+        .join('; ');
       
       // Create task object
       const taskData: TaskData = {
         id: taskId,
         taskType: data.taskType,
+        amendmentNr: data.amendmentNr,
         taskSubType: data.taskSubType,
+        projectId: data.projectId,
         sponsor: data.sponsor,
         projectName: data.projectName,
         priority: data.priority,
         edcSystem: data.edcSystem,
-        integrations: data.integrations || '',
-        documentation: documentationString,
-        description: data.description,
+        externalData: data.externalData,
+        documentation: documentation,
         startDate: startDateFormatted,
         endDate: endDateFormatted,
-        scopedHours: data.scopedHours,
+        scopedHours: data.programmingScopedHours,
+        cdsHours: data.cdsScopedHours || 0,
+        description: data.description,
         status: 'Pending Allocation',
         requestor: data.requestorName,
         requestorEmail: data.requestorEmail,
@@ -266,7 +251,7 @@ const NewRequest: React.FC = () => {
       <div>
         <h1 className="text-2xl font-bold tracking-tight">New Request</h1>
         <p className="text-muted-foreground">
-          Submit a new build or amendment request
+          Submit a new request
         </p>
       </div>
       
@@ -301,12 +286,29 @@ const NewRequest: React.FC = () => {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="New Build">New Build</SelectItem>
-                            <SelectItem value="Amendment">Amendment</SelectItem>
-                            <SelectItem value="Integration">Integration</SelectItem>
-                            <SelectItem value="RTSM Setup">RTSM Setup</SelectItem>
+                            <SelectItem value="BioGRID Initial Build">BioGRID Initial Build</SelectItem>
+                            <SelectItem value="BioGRID Amendment">BioGRID Amendment</SelectItem>
+                            <SelectItem value="BioGRID DM Build">BioGRID DM Build</SelectItem>
+                            <SelectItem value="BioGRID DM Amendment">BioGRID DM Amendment</SelectItem>
+                            <SelectItem value="BioGRID ATR Build">BioGRID ATR Build</SelectItem>
+                            <SelectItem value="BioGRID ATR Amendment">BioGRID ATR Amendment</SelectItem>
                           </SelectContent>
                         </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  {/* Amendment Nr */}
+                  <FormField
+                    control={form.control}
+                    name="amendmentNr"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Amendment Nr</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Enter amendment number" {...field} />
+                        </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -326,40 +328,30 @@ const NewRequest: React.FC = () => {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="New Full Database Build">New Full Database Build</SelectItem>
-                            <SelectItem value="CRF/Form Updates">CRF/Form Updates</SelectItem>
-                            <SelectItem value="Edit Check Updates">Edit Check Updates</SelectItem>
-                            <SelectItem value="Custom Function Updates">Custom Function Updates</SelectItem>
-                            <SelectItem value="Visit Schedule Updates">Visit Schedule Updates</SelectItem>
-                            <SelectItem value="New External Data Integration">New External Data Integration</SelectItem>
-                            <SelectItem value="Migration of Existing Data">Migration of Existing Data</SelectItem>
-                            <SelectItem value="RTSM Setup">RTSM Setup</SelectItem>
-                            <SelectItem value="Integration">Integration</SelectItem>
+                            <SelectItem value="Status Dashboards">Status Dashboards</SelectItem>
+                            <SelectItem value="Customized Dashboards ( incl. STD)">Customized Dashboards ( incl. STD)</SelectItem>
+                            <SelectItem value="Patient Profiles">Patient Profiles</SelectItem>
+                            <SelectItem value="ATR Dashboards">ATR Dashboards</SelectItem>
+                            <SelectItem value="Recon Dashboards">Recon Dashboards</SelectItem>
+                            <SelectItem value="Amend dashboards">Amend dashboards</SelectItem>
                           </SelectContent>
                         </Select>
                         <FormMessage />
-                        
-                        {/* Integrations/Modules - only visible when Integration is selected */}
-                        {taskSubType === 'Integration' && (
-                          <div className="mt-2">
-                            <FormField
-                              control={form.control}
-                              name="integrations"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>Integrations/Modules</FormLabel>
-                                  <FormControl>
-                                    <Input placeholder="Enter integrations or modules" {...field} />
-                                  </FormControl>
-                                  <FormDescription>
-                                    List the integrations or modules required for this task
-                                  </FormDescription>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                          </div>
-                        )}
+                      </FormItem>
+                    )}
+                  />
+                  
+                  {/* Project ID */}
+                  <FormField
+                    control={form.control}
+                    name="projectId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Project ID</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Enter project ID" {...field} />
+                        </FormControl>
+                        <FormMessage />
                       </FormItem>
                     )}
                   />
@@ -444,74 +436,92 @@ const NewRequest: React.FC = () => {
                       </FormItem>
                     )}
                   />
-                </div>
-                
-                {/* Documentation Paths */}
-                <div className="space-y-3">
+                  
+                  {/* External Data */}
                   <FormField
                     control={form.control}
-                    name="documentation"
+                    name="externalData"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Path(s) to Documentation</FormLabel>
-                        <div className="flex space-x-2">
-                          <FormControl>
-                            <Input 
-                              placeholder="Enter path to documentation" 
-                              value={newPath}
-                              onChange={(e) => setNewPath(e.target.value)}
-                              className="flex-1"
-                              id="documentationPaths"
-                            />
-                          </FormControl>
-                          <Button 
-                            type="button" 
-                            variant="outline" 
-                            onClick={handleSelectFile}
-                          >
-                            Browse
-                          </Button>
-                          <Button 
-                            type="button" 
-                            onClick={handleAddDocumentationPath}
-                            disabled={!newPath.trim()}
-                          >
-                            Add
-                          </Button>
-                        </div>
-                        <FormDescription>
-                          Add paths to relevant documentation for this request
-                        </FormDescription>
+                        <FormLabel>External Data</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Enter external data information" {...field} />
+                        </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
+                </div>
+                
+                {/* Documentation Section */}
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <h3 className="text-lg font-medium">Documentation</h3>
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      onClick={handleAddDocumentEntry}
+                      size="sm"
+                    >
+                      Add Document
+                    </Button>
+                  </div>
                   
-                  {documentationPaths.length > 0 && (
-                    <div className="bg-muted/20 rounded-md p-3 space-y-2">
-                      <p className="text-sm font-medium">Added Documentation:</p>
-                      <ul className="space-y-2">
-                        {documentationPaths.map((path, index) => (
-                          <li key={index} className="flex justify-between items-center text-sm bg-background p-2 rounded">
-                            <span className="truncate flex-1">{path}</span>
+                  {documentEntries.map((entry, index) => (
+                    <div key={index} className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 border rounded-lg">
+                      <div>
+                        <label className="text-sm font-medium mb-2 block">
+                          Document Type
+                        </label>
+                        <Select 
+                          value={entry.documentType} 
+                          onValueChange={(value) => handleUpdateDocumentEntry(index, 'documentType', value)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select document type" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Specs">Specs</SelectItem>
+                            <SelectItem value="Protocol">Protocol</SelectItem>
+                            <SelectItem value="Annotation">Annotation</SelectItem>
+                            <SelectItem value="Other">Other</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      
+                      <div>
+                        <div className="flex justify-between items-center mb-2">
+                          <label className="text-sm font-medium">
+                            Path to Documentation
+                          </label>
+                          {documentEntries.length > 1 && (
                             <Button 
                               type="button" 
                               variant="ghost" 
-                              size="sm" 
-                              onClick={() => handleRemoveDocumentationPath(index)}
-                              className="h-7 w-7 p-0"
+                              size="sm"
+                              onClick={() => handleRemoveDocumentEntry(index)}
+                              className="h-6 w-6 p-0"
                             >
                               ✕
                             </Button>
-                          </li>
-                        ))}
-                      </ul>
+                          )}
+                        </div>
+                        <Input
+                          placeholder="Enter path to documentation"
+                          value={entry.documentPath}
+                          onChange={(e) => handleUpdateDocumentEntry(index, 'documentPath', e.target.value)}
+                        />
+                      </div>
                     </div>
-                  )}
+                  ))}
+                  
+                  <p className="text-sm text-muted-foreground">
+                    Add document types and their corresponding paths. All entries will be saved together.
+                  </p>
                 </div>
                 
                 {/* Date and Hours */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                   {/* Start Date */}
                   <FormField
                     control={form.control}
@@ -542,16 +552,7 @@ const NewRequest: React.FC = () => {
                             <Calendar
                               mode="single"
                               selected={field.value}
-                              onSelect={(date) => {
-                                field.onChange(date);
-                                // Auto-focus on end date after selecting start date
-                                setTimeout(() => {
-                                  const endDateButton = document.querySelector('[name="endDate"]')?.closest('.flex.flex-col')?.querySelector('button');
-                                  if (endDateButton) {
-                                    (endDateButton as HTMLButtonElement).click();
-                                  }
-                                }, 100);
-                              }}
+                              onSelect={field.onChange}
                               initialFocus
                               className="pointer-events-auto"
                             />
@@ -604,18 +605,39 @@ const NewRequest: React.FC = () => {
                     )}
                   />
                   
-                  {/* Scoped Hours */}
+                  {/* Programming Scoped Hours */}
                   <FormField
                     control={form.control}
-                    name="scopedHours"
+                    name="programmingScopedHours"
                     render={({ field }) => (
                       <FormItem className="flex flex-col justify-start">
-                        <FormLabel>Scoped Hours</FormLabel>
+                        <FormLabel>Programming Scoped Hours</FormLabel>
                         <FormControl>
                           <Input 
                             type="number" 
                             min="1"
-                            placeholder="Enter estimated hours" 
+                            placeholder="Enter hours" 
+                            {...field} 
+                            className="h-10"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  {/* CDS Scoped Hours */}
+                  <FormField
+                    control={form.control}
+                    name="cdsScopedHours"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-col justify-start">
+                        <FormLabel>CDS Scoped Hours</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="number" 
+                            min="0"
+                            placeholder="Enter hours" 
                             {...field} 
                             className="h-10"
                           />

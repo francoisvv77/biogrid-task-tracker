@@ -146,7 +146,7 @@ const Metrics: React.FC = () => {
   const loadMetricsFromSmartsheet = async () => {
     try {
       setIsLoading(true);
-      const response = await fetch(`/api/smartsheet/sheets/25HX5VvvvPPqvXw9rGxV63MMHC94W2vG4QgX8cP1`);
+      const response = await fetch(`/api/smartsheet/sheets/4968623136264068`);
       if (!response.ok) throw new Error('Failed to fetch metrics');
       
       const data = await response.json();
@@ -314,6 +314,7 @@ const Metrics: React.FC = () => {
           cells: [
             { columnId: 8272663237840772, value: uniqueMetricId }, // Metric ID (unique identifier)
             { columnId: 281097919483780, value: metric.name }, // Employee
+            { columnId: 7181614843121540, value: task.sponsor }, // Sponsor
             { columnId: 1552115308908420, value: task.projectName }, // Project
             { columnId: 5433382765023108, value: task.taskType }, // Task Type
             { columnId: 3181582951337860, value: task.taskSubType || '' }, // Task Sub Type
@@ -339,13 +340,13 @@ const Metrics: React.FC = () => {
       if (rowsToUpdate.length > 0) {
         // Update each row individually to avoid duplicate ID issues
         for (const row of rowsToUpdate) {
-          await smartsheetApi.updateRows('25HX5VvvvPPqvXw9rGxV63MMHC94W2vG4QgX8cP1', [row]);
+          await smartsheetApi.updateRows('4968623136264068', [row]);
         }
       }
 
       // Add new rows if any
       if (rowsToAdd.length > 0) {
-        await smartsheetApi.addRows('25HX5VvvvPPqvXw9rGxV63MMHC94W2vG4QgX8cP1', rowsToAdd);
+        await smartsheetApi.addRows('4968623136264068', rowsToAdd);
       }
 
       toast({
@@ -419,9 +420,11 @@ const Metrics: React.FC = () => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Builders</SelectItem>
-                {teamMembers
-                  .filter(member => member.role === 'Builder')
-                  .map(builder => (
+                                  {teamMembers
+                    .filter(member => 
+                      member.role === 'BioGRID Designer' || member.role === 'CDS'
+                    )
+                    .map(builder => (
                     <SelectItem key={builder.id} value={builder.name}>
                       {builder.name}
                     </SelectItem>

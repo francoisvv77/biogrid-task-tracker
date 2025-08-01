@@ -396,7 +396,7 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="_none">Not Assigned</SelectItem>
-              {teamMembers.map(member => (
+              {teamMembers.filter(member => member.role === 'BioGRID Designer').map(member => (
                 <SelectItem key={member.id} value={member.name}>{member.name}</SelectItem>
               ))}
             </SelectContent>
@@ -408,11 +408,41 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
         )}
       </div>
 
+      <div>
+        <Label htmlFor="leadCDS">Lead CDS</Label>
+        {isEditMode ? (
+          <Select 
+            value={taskData.leadCDS || '_none'} 
+            onValueChange={(value) => handleInputChange('leadCDS', value === '_none' ? '' : value)}
+          >
+            <SelectTrigger id="leadCDS">
+              <SelectValue placeholder="Select lead CDS" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="_none">Not Assigned</SelectItem>
+              {teamMembers.filter(member => member.role === 'CDS').map(member => (
+                <SelectItem key={member.id} value={member.name}>{member.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        ) : (
+          <div className="p-2 border rounded-md bg-muted/20">
+            {taskData.leadCDS || 'Not assigned'}
+          </div>
+        )}
+      </div>
+
       <div className="space-y-2">
         <Label>Team Members</Label>
         {isEditMode ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2 border rounded-md p-3 bg-background">
-            {teamMembers.map(member => {
+            {teamMembers
+              .filter(member => 
+                member.name !== taskData.allocated && 
+                member.name !== taskData.leadCDS &&
+                (member.role === 'BioGRID Designer' || member.role === 'CDS')
+              )
+              .map(member => {
               const teamArray = Array.isArray(taskData.team) ? taskData.team : [];
               const isChecked = teamArray.includes(member.name);
               

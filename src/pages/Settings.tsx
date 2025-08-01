@@ -37,7 +37,7 @@ const mockUpdateSettings = () => {
 
 const TeamMembersSettings: React.FC = () => {
   const { teamMembers } = useAppContext();
-  const [newTeamMember, setNewTeamMember] = useState({ name: '', email: '', role: 'Builder' });
+  const [newTeamMember, setNewTeamMember] = useState({ name: '', email: '', role: 'BioGRID Designer' });
   const [isAdding, setIsAdding] = useState(false);
   
   const handleAddMember = async () => {
@@ -49,7 +49,7 @@ const TeamMembersSettings: React.FC = () => {
     try {
       await mockUpdateSettings();
       toast.success(`Added team member: ${newTeamMember.name}`);
-      setNewTeamMember({ name: '', email: '', role: 'Builder' });
+      setNewTeamMember({ name: '', email: '', role: 'BioGRID Designer' });
       setIsAdding(false);
     } catch (error) {
       toast.error('Failed to add team member');
@@ -102,7 +102,8 @@ const TeamMembersSettings: React.FC = () => {
                 className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
               >
                 <option value="Director">Director</option>
-                <option value="Build Manager">Build Manager</option>
+                <option value="BioGRID Designer">BioGRID Designer</option>
+                <option value="CDS">CDS</option>
                 <option value="Builder">Builder</option>
               </select>
             </div>

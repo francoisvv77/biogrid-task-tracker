@@ -18,6 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
 import { 
   ClipboardList, 
   Hourglass, 
@@ -41,7 +42,9 @@ const Dashboard: React.FC = () => {
   const [edcFilter, setEdcFilter] = useState<string>('all');
   const [statusFilters, setStatusFilters] = useState<string[]>([]);
   const [builderFilter, setBuilderFilter] = useState<string>('all');
+  const [priorityFilter, setPriorityFilter] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState<string>('');
+  const [showCompleted, setShowCompleted] = useState<boolean>(false);
   
   // Active card
   const [activeCard, setActiveCard] = useState<string | null>(null);
@@ -66,6 +69,9 @@ const Dashboard: React.FC = () => {
   
   // Filtered tasks
   const filteredTasks = tasks.filter(task => {
+    // Hide completed tasks by default unless toggle is enabled
+    if (!showCompleted && task.status === 'Completed') return false;
+    
     // EDC Filter
     if (edcFilter !== 'all' && task.edcSystem !== edcFilter) return false;
     
@@ -78,6 +84,9 @@ const Dashboard: React.FC = () => {
       const isTeamMember = task.team?.includes(builderFilter);
       if (!isLeadBuilder && !isTeamMember) return false;
     }
+    
+    // Priority Filter
+    if (priorityFilter !== 'all' && task.priority !== priorityFilter) return false;
     
     // Card Filter
     if (activeCard === 'pending' && task.status !== 'Pending Allocation') return false;
@@ -210,20 +219,20 @@ const Dashboard: React.FC = () => {
       </Card>
       
       {/* Filters */}
-      <div className="grid gap-4 grid-cols-1 md:grid-cols-4">
+      <div className="grid gap-2 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
         <div className="flex gap-2 items-center">
           <Search className="h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Search tasks..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full"
+            className="w-full h-9 text-sm"
           />
         </div>
         
         <Select value={edcFilter} onValueChange={setEdcFilter}>
-          <SelectTrigger>
-            <SelectValue placeholder="Filter by EDC System" />
+          <SelectTrigger className="h-9 text-sm">
+            <SelectValue placeholder="EDC System" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All EDC Systems</SelectItem>
@@ -245,12 +254,13 @@ const Dashboard: React.FC = () => {
           ]}
           selected={statusFilters}
           onChange={setStatusFilters}
-          placeholder="Filter by Status"
+          placeholder="Status"
+          className="h-9 text-sm"
         />
         
         <Select value={builderFilter} onValueChange={setBuilderFilter}>
-          <SelectTrigger>
-            <SelectValue placeholder="Filter by Builder" />
+          <SelectTrigger className="h-9 text-sm">
+            <SelectValue placeholder="Builder" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Builders</SelectItem>
@@ -259,6 +269,34 @@ const Dashboard: React.FC = () => {
             ))}
           </SelectContent>
         </Select>
+        
+        <Select value={priorityFilter} onValueChange={setPriorityFilter}>
+          <SelectTrigger className="h-9 text-sm">
+            <SelectValue placeholder="Priority" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Priorities</SelectItem>
+            <SelectItem value="Low">Low</SelectItem>
+            <SelectItem value="Medium">Medium</SelectItem>
+            <SelectItem value="High">High</SelectItem>
+            <SelectItem value="Critical">Critical</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      
+      {/* Additional Filters */}
+      <div className="flex items-center gap-2">
+        <Checkbox 
+          id="show-completed"
+          checked={showCompleted}
+          onCheckedChange={(checked) => setShowCompleted(checked === true)}
+        />
+        <label 
+          htmlFor="show-completed" 
+          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+        >
+          Show completed tasks
+        </label>
       </div>
       
       {/* Task List */}

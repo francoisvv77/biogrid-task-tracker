@@ -27,7 +27,7 @@ interface AppContextType {
   error: string | null;
   addTask: (task: TaskData) => Promise<boolean>;
   updateTask: (task: TaskData) => Promise<TaskData | null>;
-  allocateTask: (taskId: string, leadBuilder: string, team: string[]) => Promise<boolean>;
+  allocateTask: (taskId: string, leadBuilder: string, leadCDS: string, team: string[]) => Promise<boolean>;
   refreshTasks: () => Promise<void>;
   addRequestor: (requestor: { name: string; email: string }) => Promise<boolean>;
   removeRequestor: (id: string) => Promise<boolean>;
@@ -52,16 +52,19 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   // Team members state - prefilled with initial data
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([
     { id: '1', name: 'Francois van Vuuren', email: 'francois.vanvuuren@bioforumgroup.com', role: 'Director' },
-    { id: '2', name: 'Peter-John Vivier', email: 'peter.john.vivier@bioforumgroup.com', role: 'Build Manager' },
-    { id: '3', name: 'Lourens Louw', email: 'lourens.louw@bioforumgroup.com', role: 'Builder' },
-    { id: '4', name: 'Heide Engelbrecht', email: 'heide.engelbrecht@bioforumgroup.com', role: 'Builder' },
-    { id: '5', name: 'Saeed Hasan', email: 'saeed.hasan@bioforum.co.il', role: 'Builder' },
-    { id: '6', name: 'Bradley Dire', email: 'bradley.dire@bioforumgroup.com', role: 'Builder' },
-    { id: '7', name: 'Alona Dayan', email: 'alona.dayan@bioforumgroup.com', role: 'Builder' },
-    { id: '8', name: 'Danie Mong', email: 'Danie.mong@bioforumgroup.com', role: 'Builder' },
-    { id: '9', name: 'Ariena Wilson', email: 'Ariena.wilson@bioforumgroup.com', role: 'Builder' },
-    { id: '10', name: 'Mosa Lephoi', email: 'Mosa.lephoi@bioforumgroup.com', role: 'Builder' },
-    { id: '11', name: 'Kaelo Setlogelo', email: 'Kaelo.setlogelo@bioforumgroup.com', role: 'Builder' },
+    { id: '2', name: 'Kenneth Dettmer', email: 'kenneth.dettmer@bioforumgroup.com', role: 'BioGRID Designer' },
+    { id: '3', name: 'Graham Bubb', email: 'graham.bubb@bioforumgroup.com', role: 'BioGRID Designer' },
+    { id: '4', name: 'Hanno Prinsloo', email: 'hanno.prinsloo@bioforumgroup.com', role: 'BioGRID Designer' },
+    { id: '5', name: 'Tanja janse van Rensburg', email: 'tanja.jansevanrensburg@bioforum.co.il', role: 'BioGRID Designer' },
+    { id: '6', name: 'Marli Muller', email: 'marli.muller@bioforumgroup.com', role: 'CDS' },
+    { id: '7', name: 'Quinton Kaplan', email: 'quinton.kaplan@bioforumgroup.com', role: 'BioGRID Designer' },
+    { id: '8', name: 'Maryna Kapp', email: 'maryna.kapp@bioforumgroup.com', role: 'CDS' },
+    { id: '9', name: 'Nadia McCrindle', email: 'nadia.mccrindle@bioforumgroup.com', role: 'CDS' },
+  // { id: '8', name: 'Alona Dayan', email: 'alona.dayan@bioforumgroup.com', role: 'Builder' },
+  //  { id: '9', name: 'Danie Mong', email: 'Danie.mong@bioforumgroup.com', role: 'Builder' },
+  // { id: '10', name: 'Ariena Wilson', email: 'Ariena.wilson@bioforumgroup.com', role: 'Builder' },
+  //  { id: '11', name: 'Mosa Lephoi', email: 'Mosa.lephoi@bioforumgroup.com', role: 'Builder' },
+  //   { id: '12', name: 'Kaelo Setlogelo', email: 'Kaelo.setlogelo@bioforumgroup.com', role: 'Builder' },
   ]);
   
   // EDC systems state - prefilled with initial data
@@ -159,11 +162,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   // Function to allocate a task
-  const allocateTask = async (taskId: string, leadBuilder: string, team: string[]): Promise<boolean> => {
+  const allocateTask = async (taskId: string, leadBuilder: string, leadCDS: string, team: string[]): Promise<boolean> => {
     setLoading(true);
     setError(null);
     try {
-      const result = await smartsheetApi.allocateTask(taskId, leadBuilder, team);
+      const result = await smartsheetApi.allocateTask(taskId, leadBuilder, leadCDS, team);
       if (result) {
         // Refresh tasks after successful allocation
         await refreshTasks();
