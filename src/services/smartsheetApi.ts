@@ -167,6 +167,9 @@ export const smartsheetApi = {
   // Get all tasks from Smartsheet
   getTasks: async (): Promise<TaskData[]> => {
     try {
+      console.log('Fetching tasks from:', `${API_URL}/sheets/${SHEET_ID}`);
+      console.log('Environment:', process.env.NODE_ENV || 'development');
+      
       const response = await fetch(`${API_URL}/sheets/${SHEET_ID}`, {
         method: "GET",
         headers: {
@@ -181,6 +184,9 @@ export const smartsheetApi = {
       }
       
       const data = await response.json();
+      console.log('Smartsheet response data:', data);
+      console.log('Number of rows returned:', data.rows ? data.rows.length : 0);
+      
       return data.rows.map(rowToTask);
     } catch (error) {
       console.error("Error fetching tasks:", error);

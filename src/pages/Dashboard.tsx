@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useAppContext } from '@/context/AppContext';
+import { ApiDiagnostics } from '@/components/ApiDiagnostics';
 import {
   Card,
   CardContent,
@@ -150,6 +151,9 @@ const Dashboard: React.FC = () => {
         </div>
         <Button onClick={() => navigate('/new-request')}>New Request</Button>
       </div>
+      
+      {/* Temporary API Diagnostics - Remove after debugging */}
+      <ApiDiagnostics />
       
       {/* Metric Cards */}
       <motion.div

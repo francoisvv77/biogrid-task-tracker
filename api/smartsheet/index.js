@@ -1,8 +1,13 @@
 module.exports = async function (context, req) {
     context.log('Smartsheet API proxy function processed a request.');
+    context.log('Request path:', req.params.path);
+    context.log('Request method:', req.method);
 
     // Get the API key from environment variables
     const SMARTSHEET_API_KEY = process.env.SMARTSHEET_API_KEY || "mcQHLLu8W9A0uUtAmgYaFsQE8yH1QWKUYNcoq";
+    
+    // Log which API key is being used (masked for security)
+    context.log('Using API key:', SMARTSHEET_API_KEY ? SMARTSHEET_API_KEY.substring(0, 8) + '...' : 'NOT SET');
     
     // Extract the path from the request
     const path = req.params.path;
@@ -11,6 +16,7 @@ module.exports = async function (context, req) {
     
     // Construct the Smartsheet API URL
     const smartsheetUrl = `https://api.smartsheet.com/2.0/${path}`;
+    context.log('Calling Smartsheet URL:', smartsheetUrl);
     
     try {
         // Prepare headers
