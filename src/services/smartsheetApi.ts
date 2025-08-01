@@ -168,7 +168,16 @@ export const smartsheetApi = {
   getTasks: async (): Promise<TaskData[]> => {
     try {
       console.log('Fetching tasks from:', `${API_URL}/sheets/${SHEET_ID}`);
+      console.log('Full URL:', `${window.location.origin}${API_URL}/sheets/${SHEET_ID}`);
       console.log('Environment:', process.env.NODE_ENV || 'development');
+      
+      // First test if the API endpoint exists
+      try {
+        const testResponse = await fetch('/api/test');
+        console.log('Test API response:', testResponse.status, testResponse.ok);
+      } catch (testError) {
+        console.error('Test API failed:', testError);
+      }
       
       const response = await fetch(`${API_URL}/sheets/${SHEET_ID}`, {
         method: "GET",
@@ -178,12 +187,26 @@ export const smartsheetApi = {
         }
       });
       
+      console.log('Response status:', response.status);
+      console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+      
       if (!response.ok) {
-        console.error("Smartsheet API error:", await response.text());
-        throw new Error("Failed to fetch tasks");
+        const errorText = await response.text();
+        console.error("Smartsheet API error:", errorText);
+        console.error("Response was not JSON, got HTML or other content");
+        throw new Error(`Failed to fetch tasks: ${response.status} - ${errorText.substring(0, 200)}...`);
       }
       
-      const data = await response.json();
+      let data;
+      try {
+        data = await response.json();
+      } catch (jsonError) {
+        const textContent = await response.text();
+        console.error('Failed to parse JSON response:', jsonError);
+        console.error('Response content (first 500 chars):', textContent.substring(0, 500));
+        throw new Error(`API returned non-JSON response: ${textContent.substring(0, 100)}...`);
+      }
+      
       console.log('Smartsheet response data:', data);
       console.log('Number of rows returned:', data.rows ? data.rows.length : 0);
       
