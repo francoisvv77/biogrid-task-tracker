@@ -1,6 +1,22 @@
-# Welcome to your Lovable project
+# BioGrid Task Tracker
 
-## Project info
+A comprehensive project management system for BioForum Group's BioGrid operations.
+
+## Project Overview
+
+This is the **BioGrid Task Tracker** - a React-based task management application that integrates with Smartsheet for data management. It provides functionality for:
+
+- Task creation and allocation
+- Team member management
+- Progress tracking and metrics
+- Gantt chart visualization
+- Smartsheet API integration
+
+## Deployment
+
+This project is configured for Azure Static Web Apps deployment.
+
+## Original Lovable Project
 
 **URL**: https://lovable.dev/projects/60026af5-91e5-4ec3-afd4-1c9e2131c2a7
 
