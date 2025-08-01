@@ -8,9 +8,7 @@
     "build": "vite build",
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
-    "preview": "vite preview",
-    "swa:build": "npm run build",
-    "swa:start": "swa start dist --api-location api"
+    "preview": "vite preview"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",
@@ -66,7 +64,6 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
-    "@azure/static-web-apps-cli": "^1.1.7",
     "@eslint/js": "^9.9.0",
     "@tailwindcss/typography": "^0.5.15",
     "@types/node": "^22.5.5",
