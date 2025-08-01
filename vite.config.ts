@@ -4,10 +4,25 @@ import path from "path";
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
+  base: "/",
+  build: {
+    outDir: "build",
+    assetsDir: "assets",
+    sourcemap: false,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['react', 'react-dom'],
+          router: ['react-router-dom'],
+          ui: ['@radix-ui/react-dialog', '@radix-ui/react-dropdown-menu', '@radix-ui/react-select']
+        }
+      }
+    }
+  },
   server: {
     host: "::",
     port: 8080,
-    proxy: {
+    proxy: mode === 'development' ? {
       '/api/smartsheet': {
         target: 'https://api.smartsheet.com/2.0',
         changeOrigin: true,
@@ -19,7 +34,7 @@ export default defineConfig(({ mode }) => ({
           });
         }
       },
-    },
+    } : {},
   },
   plugins: [
     react(),

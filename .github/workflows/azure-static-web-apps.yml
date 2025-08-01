@@ -38,7 +38,7 @@ jobs:
           action: "upload"
           app_location: "/"
           api_location: "api"
-          output_location: "dist"
+          output_location: "build"
           skip_deploy_on_missing_secrets: true
         env:
           SMARTSHEET_API_KEY: ${{ secrets.SMARTSHEET_API_KEY }}
