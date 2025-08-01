@@ -190,21 +190,22 @@ export const smartsheetApi = {
       console.log('Response status:', response.status);
       console.log('Response headers:', Object.fromEntries(response.headers.entries()));
       
+      // Read the response body once and handle both error and success cases
+      const responseText = await response.text();
+      
       if (!response.ok) {
-        const errorText = await response.text();
-        console.error("Smartsheet API error:", errorText);
+        console.error("Smartsheet API error:", responseText);
         console.error("Response was not JSON, got HTML or other content");
-        throw new Error(`Failed to fetch tasks: ${response.status} - ${errorText.substring(0, 200)}...`);
+        throw new Error(`Failed to fetch tasks: ${response.status} - ${responseText.substring(0, 200)}...`);
       }
       
       let data;
       try {
-        data = await response.json();
+        data = JSON.parse(responseText);
       } catch (jsonError) {
-        const textContent = await response.text();
         console.error('Failed to parse JSON response:', jsonError);
-        console.error('Response content (first 500 chars):', textContent.substring(0, 500));
-        throw new Error(`API returned non-JSON response: ${textContent.substring(0, 100)}...`);
+        console.error('Response content (first 500 chars):', responseText.substring(0, 500));
+        throw new Error(`API returned non-JSON response: ${responseText.substring(0, 100)}...`);
       }
       
       console.log('Smartsheet response data:', data);
