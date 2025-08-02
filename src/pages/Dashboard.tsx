@@ -55,7 +55,9 @@ const Dashboard: React.FC = () => {
   
   // Calculate metrics
   const metrics = {
-    total: tasks.length,
+    total: showCompleted 
+      ? tasks.length 
+      : tasks.filter(task => task.status !== 'Completed').length,
     pending: tasks.filter(task => task.status === 'Pending Allocation').length,
     inProgress: tasks.filter(task => task.status === 'In Progress').length,
     dueThisWeek: tasks.filter(task => {
